@@ -52,6 +52,7 @@ export type Database = {
           image_url: string | null
           name: string
           parent_id: string | null
+          slug: string | null
         }
         Insert: {
           created_at?: string | null
@@ -60,6 +61,7 @@ export type Database = {
           image_url?: string | null
           name: string
           parent_id?: string | null
+          slug?: string | null
         }
         Update: {
           created_at?: string | null
@@ -68,6 +70,7 @@ export type Database = {
           image_url?: string | null
           name?: string
           parent_id?: string | null
+          slug?: string | null
         }
         Relationships: [
           {
@@ -78,6 +81,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean | null
+          max_discount_amount: number | null
+          min_order_amount: number | null
+          updated_at: string
+          usage_limit: number | null
+          used_count: number | null
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          id?: string
+          is_active?: boolean | null
+          max_discount_amount?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+          usage_limit?: number | null
+          used_count?: number | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          max_discount_amount?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+          usage_limit?: number | null
+          used_count?: number | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
       }
       deal_products: {
         Row: {
@@ -154,6 +205,90 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_logs: {
+        Row: {
+          change_type: string
+          created_at: string
+          id: string
+          new_stock: number
+          notes: string | null
+          order_id: string | null
+          previous_stock: number
+          product_id: string
+          quantity_change: number
+        }
+        Insert: {
+          change_type: string
+          created_at?: string
+          id?: string
+          new_stock: number
+          notes?: string | null
+          order_id?: string | null
+          previous_stock: number
+          product_id: string
+          quantity_change: number
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          id?: string
+          new_stock?: number
+          notes?: string | null
+          order_id?: string | null
+          previous_stock?: number
+          product_id?: string
+          quantity_change?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -198,37 +333,100 @@ export type Database = {
       }
       orders: {
         Row: {
+          coupon_id: string | null
           created_at: string | null
+          discount_amount: number | null
           id: string
+          notes: string | null
           payment_method: string
           payment_status: string
           shipping_address: Json
+          shipping_cost: number | null
+          shipping_method_id: string | null
           status: string
+          tax_amount: number | null
           total_amount: number
+          tracking_number: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          coupon_id?: string | null
           created_at?: string | null
+          discount_amount?: number | null
           id?: string
+          notes?: string | null
           payment_method: string
           payment_status?: string
           shipping_address: Json
+          shipping_cost?: number | null
+          shipping_method_id?: string | null
           status?: string
+          tax_amount?: number | null
           total_amount: number
+          tracking_number?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          coupon_id?: string | null
           created_at?: string | null
+          discount_amount?: number | null
           id?: string
+          notes?: string | null
           payment_method?: string
           payment_status?: string
           shipping_address?: Json
+          shipping_cost?: number | null
+          shipping_method_id?: string | null
           status?: string
+          tax_amount?: number | null
           total_amount?: number
+          tracking_number?: string | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_shipping_method_id_fkey"
+            columns: ["shipping_method_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_methods: {
+        Row: {
+          config: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
         }
         Relationships: []
       }
@@ -315,10 +513,14 @@ export type Database = {
           discount_price: number | null
           id: string
           is_featured: boolean | null
+          meta_description: string | null
+          meta_title: string | null
           name: string
           price: number
+          slug: string | null
           specifications: Json | null
           stock: number
+          tags: string[] | null
           updated_at: string | null
         }
         Insert: {
@@ -330,10 +532,14 @@ export type Database = {
           discount_price?: number | null
           id?: string
           is_featured?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
           name: string
           price: number
+          slug?: string | null
           specifications?: Json | null
           stock?: number
+          tags?: string[] | null
           updated_at?: string | null
         }
         Update: {
@@ -345,10 +551,14 @@ export type Database = {
           discount_price?: number | null
           id?: string
           is_featured?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
           name?: string
           price?: number
+          slug?: string | null
           specifications?: Json | null
           stock?: number
+          tags?: string[] | null
           updated_at?: string | null
         }
         Relationships: [
@@ -422,6 +632,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_methods: {
+        Row: {
+          created_at: string
+          description: string | null
+          estimated_days: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          estimated_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          estimated_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
