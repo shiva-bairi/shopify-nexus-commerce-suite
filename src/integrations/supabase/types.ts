@@ -9,6 +9,90 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          address_line_1: string
+          address_line_2: string | null
+          city: string
+          company: string | null
+          country: string
+          created_at: string
+          first_name: string
+          id: string
+          is_default: boolean | null
+          last_name: string
+          phone: string | null
+          postal_code: string
+          state: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line_1: string
+          address_line_2?: string | null
+          city: string
+          company?: string | null
+          country?: string
+          created_at?: string
+          first_name: string
+          id?: string
+          is_default?: boolean | null
+          last_name: string
+          phone?: string | null
+          postal_code: string
+          state: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line_1?: string
+          address_line_2?: string | null
+          city?: string
+          company?: string | null
+          country?: string
+          created_at?: string
+          first_name?: string
+          id?: string
+          is_default?: boolean | null
+          last_name?: string
+          phone?: string | null
+          postal_code?: string
+          state?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          permissions: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permissions?: Json | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permissions?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string | null
@@ -333,6 +417,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          billing_address_id: string | null
           coupon_id: string | null
           created_at: string | null
           discount_amount: number | null
@@ -341,6 +426,7 @@ export type Database = {
           payment_method: string
           payment_status: string
           shipping_address: Json
+          shipping_address_id: string | null
           shipping_cost: number | null
           shipping_method_id: string | null
           status: string
@@ -351,6 +437,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          billing_address_id?: string | null
           coupon_id?: string | null
           created_at?: string | null
           discount_amount?: number | null
@@ -359,6 +446,7 @@ export type Database = {
           payment_method: string
           payment_status?: string
           shipping_address: Json
+          shipping_address_id?: string | null
           shipping_cost?: number | null
           shipping_method_id?: string | null
           status?: string
@@ -369,6 +457,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          billing_address_id?: string | null
           coupon_id?: string | null
           created_at?: string | null
           discount_amount?: number | null
@@ -377,6 +466,7 @@ export type Database = {
           payment_method?: string
           payment_status?: string
           shipping_address?: Json
+          shipping_address_id?: string | null
           shipping_cost?: number | null
           shipping_method_id?: string | null
           status?: string
@@ -388,10 +478,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_billing_address_id_fkey"
+            columns: ["billing_address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_coupon_id_fkey"
             columns: ["coupon_id"]
             isOneToOne: false
             referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_shipping_address_id_fkey"
+            columns: ["shipping_address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
             referencedColumns: ["id"]
           },
           {
@@ -703,7 +807,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
+      is_super_admin: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

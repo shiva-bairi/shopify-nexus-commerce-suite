@@ -1,121 +1,155 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Search, Heart, Menu } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { Search, ShoppingCart, Menu, User, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
+  const { data: cartCount } = useQuery({
+    queryKey: ['cart-count'],
+    queryFn: async () => {
+      if (!user) return 0;
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select('quantity');
+      if (error) throw error;
+      return data.reduce((sum, item) => sum + item.quantity, 0);
+    },
+    enabled: !!user
+  });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    toast({
-      title: "Signed out",
-      description: "You have been signed out successfully.",
-    });
-    navigate('/');
-  };
-
   return (
-    <header className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="border-b bg-white">
+      <div className="container mx-auto px-4">
+        {/* Top bar */}
+        <div className="flex items-center justify-between py-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <h1 className="text-2xl font-bold text-blue-600">ShopNexus</h1>
+          <Link to="/" className="text-2xl font-bold text-primary">
+            ShopEase
           </Link>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-lg mx-8">
-            <div className="relative">
+          {/* Search bar - hidden on mobile */}
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                type="text"
+                type="search"
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pr-10"
+                className="pl-10"
               />
-              <Button
-                type="submit"
-                size="sm"
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
             </div>
           </form>
 
           {/* Right side buttons */}
-          <div className="flex items-center space-x-4">
-            {user && (
-              <Link to="/wishlist">
-                <Button variant="ghost" size="sm">
-                  <Heart className="h-5 w-5" />
-                </Button>
-              </Link>
-            )}
-
-            <Link to="/cart">
-              <Button variant="ghost" size="sm">
-                <ShoppingCart className="h-5 w-5" />
-              </Button>
-            </Link>
-
+          <div className="flex items-center space-x-2">
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/account">
                     <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/orders')}>
-                    Orders
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <span className="sr-only md:not-sr-only md:ml-2">Account</span>
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/account?tab=wishlist">
+                    <Heart className="h-5 w-5" />
+                    <span className="sr-only md:not-sr-only md:ml-2">Wishlist</span>
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild className="relative">
+                  <Link to="/cart">
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartCount > 0 && (
+                      <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                        {cartCount}
+                      </Badge>
+                    )}
+                    <span className="sr-only md:not-sr-only md:ml-2">Cart</span>
+                  </Link>
+                </Button>
+              </>
             ) : (
-              <div className="flex space-x-2">
-                <Link to="/login">
-                  <Button variant="ghost" size="sm">Sign In</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button size="sm">Sign Up</Button>
-                </Link>
-              </div>
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/signup">Sign Up</Link>
+                </Button>
+              </>
             )}
+
+            {/* Mobile menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <div className="flex flex-col space-y-4 mt-4">
+                  <form onSubmit={handleSearch} className="flex">
+                    <div className="relative w-full">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        type="search"
+                        placeholder="Search products..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </form>
+                  
+                  <nav className="flex flex-col space-y-2">
+                    <Link to="/" className="text-lg font-medium">Home</Link>
+                    <Link to="/products" className="text-lg font-medium">Products</Link>
+                    {user ? (
+                      <>
+                        <Link to="/account" className="text-lg font-medium">Account</Link>
+                        <Link to="/cart" className="text-lg font-medium">Cart</Link>
+                      </>
+                    ) : (
+                      <>
+                        <Link to="/login" className="text-lg font-medium">Sign In</Link>
+                        <Link to="/signup" className="text-lg font-medium">Sign Up</Link>
+                      </>
+                    )}
+                  </nav>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
+
+        {/* Navigation */}
+        <nav className="hidden md:flex items-center space-x-8 py-2 border-t">
+          <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">
+            Home
+          </Link>
+          <Link to="/products" className="text-sm font-medium hover:text-primary transition-colors">
+            All Products
+          </Link>
+        </nav>
       </div>
     </header>
   );
