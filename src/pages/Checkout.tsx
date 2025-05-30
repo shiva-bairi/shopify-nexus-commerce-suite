@@ -163,13 +163,13 @@ const Checkout = () => {
 
       const shippingAddress = addresses?.find(addr => addr.id === selectedShippingAddress);
 
-      // Create order
+      // Create order - cast shippingAddress to Json type
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user!.id,
           total_amount: total,
-          shipping_address: shippingAddress,
+          shipping_address: shippingAddress as any, // Cast to Json type
           shipping_address_id: selectedShippingAddress,
           billing_address_id: billingAddressId,
           payment_method: 'credit_card',
