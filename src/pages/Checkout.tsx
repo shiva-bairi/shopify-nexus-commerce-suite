@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -42,7 +41,7 @@ interface CartItem {
 }
 
 const Checkout = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,11 +65,12 @@ const Checkout = () => {
     is_default: false
   });
 
+  // Only redirect to login if auth is loaded and user is not authenticated
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       navigate('/login');
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   // Fetch cart items
   const { data: cartItems, isLoading: cartLoading } = useQuery({
@@ -240,6 +240,15 @@ const Checkout = () => {
   const shipping = 9.99;
   const tax = subtotal * 0.1;
   const total = subtotal + shipping + tax;
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (cartLoading || addressesLoading) {
     return (

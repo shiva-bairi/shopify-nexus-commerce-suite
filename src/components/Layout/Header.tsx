@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { Search, ShoppingCart, Menu, User, Heart } from 'lucide-react';
+import { Search, ShoppingCart, Menu, User, Heart, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const Header = () => {
@@ -24,6 +24,18 @@ const Header = () => {
         .select('quantity');
       if (error) throw error;
       return data.reduce((sum, item) => sum + item.quantity, 0);
+    },
+    enabled: !!user
+  });
+
+  // Check if user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['admin-check', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase.rpc('is_admin', { user_uuid: user.id });
+      if (error) return false;
+      return data;
     },
     enabled: !!user
   });
@@ -75,6 +87,14 @@ const Header = () => {
                     <span className="sr-only md:not-sr-only md:ml-2">Wishlist</span>
                   </Link>
                 </Button>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/admin">
+                      <Settings className="h-5 w-5" />
+                      <span className="sr-only md:not-sr-only md:ml-2">Admin</span>
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" asChild className="relative">
                   <Link to="/cart">
                     <ShoppingCart className="h-5 w-5" />
@@ -127,6 +147,9 @@ const Header = () => {
                       <>
                         <Link to="/account" className="text-lg font-medium">Account</Link>
                         <Link to="/cart" className="text-lg font-medium">Cart</Link>
+                        {isAdmin && (
+                          <Link to="/admin" className="text-lg font-medium">Admin</Link>
+                        )}
                       </>
                     ) : (
                       <>
@@ -149,6 +172,11 @@ const Header = () => {
           <Link to="/products" className="text-sm font-medium hover:text-primary transition-colors">
             All Products
           </Link>
+          {isAdmin && (
+            <Link to="/admin" className="text-sm font-medium hover:text-primary transition-colors">
+              Admin
+            </Link>
+          )}
         </nav>
       </div>
     </header>
