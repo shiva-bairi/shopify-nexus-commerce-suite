@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,15 +59,11 @@ const Account = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('orders');
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
-
-  // Fetch user orders
+  // Fetch user orders - always call this hook
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ['user-orders'],
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -84,26 +80,30 @@ const Account = () => {
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as Order[];
-    }
+    },
+    enabled: !!user
   });
 
-  // Fetch user addresses
+  // Fetch user addresses - always call this hook
   const { data: addresses, isLoading: addressesLoading } = useQuery({
     queryKey: ['user-addresses'],
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from('addresses')
         .select('*')
         .order('is_default', { ascending: false });
       if (error) throw error;
       return data as Address[];
-    }
+    },
+    enabled: !!user
   });
 
-  // Fetch wishlist
+  // Fetch wishlist - always call this hook
   const { data: wishlist, isLoading: wishlistLoading } = useQuery({
     queryKey: ['user-wishlist'],
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from('wishlists')
         .select(`
@@ -115,8 +115,21 @@ const Account = () => {
         `);
       if (error) throw error;
       return data as WishlistItem[];
-    }
+    },
+    enabled: !!user
   });
+
+  // Handle navigation after all hooks are called
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  // Don't render content if user is not authenticated
+  if (!user) {
+    return null;
+  }
 
   const handleSignOut = async () => {
     await signOut();
