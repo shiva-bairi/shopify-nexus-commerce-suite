@@ -8,15 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Search, UserPlus, Shield, ShieldOff } from 'lucide-react';
+import { Loader2, Search, Shield, ShieldOff } from 'lucide-react';
 
 interface Profile {
   id: string;
   first_name: string | null;
   last_name: string | null;
-  email: string | null;
+  phone: string | null;
   created_at: string;
-  user_roles: Array<{ role: string }>;
+  email?: string | null;
+  is_admin?: boolean;
 }
 
 const AdminUsers = () => {
@@ -29,18 +30,32 @@ const AdminUsers = () => {
     queryFn: async () => {
       let query = supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles(role)
-        `);
+        .select('*');
 
       if (searchQuery) {
-        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data: profiles, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      return data as Profile[];
+
+      // Get admin status for each user
+      const { data: adminUsers, error: adminError } = await supabase
+        .from('admin_users')
+        .select('user_id');
+      
+      if (adminError) throw adminError;
+
+      const adminUserIds = new Set(adminUsers?.map(admin => admin.user_id) || []);
+
+      // Get user emails from auth metadata (this is a simplified approach)
+      const usersWithAdminStatus = profiles?.map(profile => ({
+        ...profile,
+        email: null, // We can't easily get email from auth.users via the client
+        is_admin: adminUserIds.has(profile.id)
+      })) || [];
+
+      return usersWithAdminStatus as Profile[];
     }
   });
 
@@ -49,15 +64,14 @@ const AdminUsers = () => {
       if (isAdmin) {
         // Remove admin role
         const { error } = await supabase
-          .from('user_roles')
+          .from('admin_users')
           .delete()
-          .eq('user_id', userId)
-          .eq('role', 'admin');
+          .eq('user_id', userId);
         if (error) throw error;
       } else {
         // Add admin role
         const { error } = await supabase
-          .from('user_roles')
+          .from('admin_users')
           .insert({ user_id: userId, role: 'admin' });
         if (error) throw error;
       }
@@ -111,55 +125,52 @@ const AdminUsers = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users?.map((user) => {
-              const isAdmin = user.user_roles?.some(role => role.role === 'admin');
-              return (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    {user.first_name || user.last_name 
-                      ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
-                      : 'No name'
-                    }
-                  </TableCell>
-                  <TableCell>{user.email || 'No email'}</TableCell>
-                  <TableCell>
-                    <Badge variant={isAdmin ? 'destructive' : 'secondary'}>
-                      {isAdmin ? 'Admin' : 'User'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant={isAdmin ? 'outline' : 'default'}
-                      onClick={() => handleToggleAdmin(user.id, isAdmin)}
-                      disabled={toggleAdminMutation.isPending}
-                    >
-                      {isAdmin ? (
-                        <>
-                          <ShieldOff className="h-4 w-4 mr-2" />
-                          Remove Admin
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="h-4 w-4 mr-2" />
-                          Make Admin
-                        </>
-                      )}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {users?.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>
+                  {user.first_name || user.last_name 
+                    ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                    : 'No name'
+                  }
+                </TableCell>
+                <TableCell>{user.phone || 'No phone'}</TableCell>
+                <TableCell>
+                  <Badge variant={user.is_admin ? 'destructive' : 'secondary'}>
+                    {user.is_admin ? 'Admin' : 'User'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {new Date(user.created_at).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant={user.is_admin ? 'outline' : 'default'}
+                    onClick={() => handleToggleAdmin(user.id, user.is_admin || false)}
+                    disabled={toggleAdminMutation.isPending}
+                  >
+                    {user.is_admin ? (
+                      <>
+                        <ShieldOff className="h-4 w-4 mr-2" />
+                        Remove Admin
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Make Admin
+                      </>
+                    )}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </CardContent>

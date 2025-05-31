@@ -16,7 +16,7 @@ interface Product {
   price: number;
   discount_price: number | null;
   stock: number;
-  is_active: boolean;
+  is_featured: boolean;
   created_at: string;
   product_images: Array<{ image_url: string; is_primary: boolean }>;
 }
@@ -46,11 +46,11 @@ const AdminProducts = () => {
     }
   });
 
-  const toggleActiveMutation = useMutation({
-    mutationFn: async ({ productId, isActive }: { productId: string; isActive: boolean }) => {
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: async ({ productId, isFeatured }: { productId: string; isFeatured: boolean }) => {
       const { error } = await supabase
         .from('products')
-        .update({ is_active: !isActive })
+        .update({ is_featured: !isFeatured })
         .eq('id', productId);
       if (error) throw error;
     },
@@ -94,8 +94,8 @@ const AdminProducts = () => {
     }
   });
 
-  const handleToggleActive = (productId: string, isActive: boolean) => {
-    toggleActiveMutation.mutate({ productId, isActive });
+  const handleToggleFeatured = (productId: string, isFeatured: boolean) => {
+    toggleFeaturedMutation.mutate({ productId, isFeatured });
   };
 
   const handleDeleteProduct = (productId: string) => {
@@ -145,7 +145,7 @@ const AdminProducts = () => {
               <TableHead>Name</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Stock</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Featured</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -178,8 +178,8 @@ const AdminProducts = () => {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={product.is_active ? 'default' : 'secondary'}>
-                    {product.is_active ? 'Active' : 'Inactive'}
+                  <Badge variant={product.is_featured ? 'default' : 'secondary'}>
+                    {product.is_featured ? 'Featured' : 'Regular'}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -189,11 +189,11 @@ const AdminProducts = () => {
                     </Button>
                     <Button
                       size="sm"
-                      variant={product.is_active ? 'outline' : 'default'}
-                      onClick={() => handleToggleActive(product.id, product.is_active)}
-                      disabled={toggleActiveMutation.isPending}
+                      variant={product.is_featured ? 'outline' : 'default'}
+                      onClick={() => handleToggleFeatured(product.id, product.is_featured)}
+                      disabled={toggleFeaturedMutation.isPending}
                     >
-                      {product.is_active ? 'Deactivate' : 'Activate'}
+                      {product.is_featured ? 'Unfeature' : 'Feature'}
                     </Button>
                     <Button
                       size="sm"

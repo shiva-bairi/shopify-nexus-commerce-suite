@@ -17,11 +17,7 @@ interface Order {
   status: string;
   created_at: string;
   shipping_address: any;
-  profiles: {
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-  };
+  user_id: string;
   order_items: Array<{
     quantity: number;
     price_at_purchase: number;
@@ -44,7 +40,6 @@ const AdminOrders = () => {
         .from('orders')
         .select(`
           *,
-          profiles(first_name, last_name, email),
           order_items(
             quantity,
             price_at_purchase,
@@ -149,7 +144,7 @@ const AdminOrders = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Order ID</TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead>Customer ID</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Status</TableHead>
@@ -164,14 +159,8 @@ const AdminOrders = () => {
                   #{order.id.slice(0, 8)}
                 </TableCell>
                 <TableCell>
-                  <div>
-                    <div className="font-medium">
-                      {order.profiles?.first_name || order.profiles?.last_name
-                        ? `${order.profiles.first_name || ''} ${order.profiles.last_name || ''}`.trim()
-                        : 'No name'
-                      }
-                    </div>
-                    <div className="text-sm text-gray-500">{order.profiles?.email}</div>
+                  <div className="font-mono text-sm">
+                    {order.user_id.slice(0, 8)}...
                   </div>
                 </TableCell>
                 <TableCell>
