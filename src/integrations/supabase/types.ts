@@ -289,6 +289,44 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          product_id: string | null
+          threshold_value: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          product_id?: string | null
+          threshold_value?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          product_id?: string | null
+          threshold_value?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_logs: {
         Row: {
           change_type: string
@@ -614,18 +652,22 @@ export type Database = {
           category_id: string | null
           created_at: string | null
           description: string | null
+          dimensions: Json | null
           discount_price: number | null
           id: string
           is_featured: boolean | null
+          low_stock_threshold: number | null
           meta_description: string | null
           meta_title: string | null
           name: string
           price: number
+          sku: string | null
           slug: string | null
           specifications: Json | null
           stock: number
           tags: string[] | null
           updated_at: string | null
+          weight: number | null
         }
         Insert: {
           avg_rating?: number | null
@@ -633,18 +675,22 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          dimensions?: Json | null
           discount_price?: number | null
           id?: string
           is_featured?: boolean | null
+          low_stock_threshold?: number | null
           meta_description?: string | null
           meta_title?: string | null
           name: string
           price: number
+          sku?: string | null
           slug?: string | null
           specifications?: Json | null
           stock?: number
           tags?: string[] | null
           updated_at?: string | null
+          weight?: number | null
         }
         Update: {
           avg_rating?: number | null
@@ -652,18 +698,22 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          dimensions?: Json | null
           discount_price?: number | null
           id?: string
           is_featured?: boolean | null
+          low_stock_threshold?: number | null
           meta_description?: string | null
           meta_title?: string | null
           name?: string
           price?: number
+          sku?: string | null
           slug?: string | null
           specifications?: Json | null
           stock?: number
           tags?: string[] | null
           updated_at?: string | null
+          weight?: number | null
         }
         Relationships: [
           {
@@ -705,31 +755,78 @@ export type Database = {
         }
         Relationships: []
       }
+      review_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          review_id: string | null
+          user_id: string
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          review_id?: string | null
+          user_id: string
+          vote_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          review_id?: string | null
+          user_id?: string
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_votes_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
           created_at: string | null
+          helpful_count: number | null
           id: string
+          is_verified: boolean | null
+          moderated_at: string | null
+          moderated_by: string | null
           product_id: string
           rating: number
+          status: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           comment?: string | null
           created_at?: string | null
+          helpful_count?: number | null
           id?: string
+          is_verified?: boolean | null
+          moderated_at?: string | null
+          moderated_by?: string | null
           product_id: string
           rating: number
+          status?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           comment?: string | null
           created_at?: string | null
+          helpful_count?: number | null
           id?: string
+          is_verified?: boolean | null
+          moderated_at?: string | null
+          moderated_by?: string | null
           product_id?: string
           rating?: number
+          status?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -807,6 +904,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_low_stock: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       is_admin: {
         Args: { user_uuid?: string }
         Returns: boolean
