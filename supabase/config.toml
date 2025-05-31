@@ -1,1 +1,44 @@
+
 project_id = "eaodcvdsmakmdibwkfrm"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[functions.create-stripe-payment]
+verify_jwt = true
+
+[functions.create-phonepe-payment]
+verify_jwt = true
+
+[functions.create-paytm-payment]
+verify_jwt = true
+
+[auth]
+enabled = true
+external_url = "http://127.0.0.1:54321"
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[edge-runtime]
+policy = "per_worker"
+inspector_port = 8083

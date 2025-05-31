@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Plus } from 'lucide-react';
+import PaymentSelector from '@/components/PaymentSelector';
 
 interface Address {
   id: string;
@@ -50,6 +51,7 @@ const Checkout = () => {
   const [selectedBillingAddress, setSelectedBillingAddress] = useState<string>('');
   const [useShippingForBilling, setUseShippingForBilling] = useState(true);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('stripe');
   const [newAddress, setNewAddress] = useState({
     type: 'shipping' as 'shipping' | 'billing',
     first_name: '',
@@ -147,7 +149,7 @@ const Checkout = () => {
     }
   });
 
-  // Place order mutation
+  // Enhanced place order mutation with payment gateway integration
   const placeOrderMutation = useMutation({
     mutationFn: async () => {
       if (!cartItems || cartItems.length === 0) throw new Error('Cart is empty');
@@ -163,16 +165,16 @@ const Checkout = () => {
 
       const shippingAddress = addresses?.find(addr => addr.id === selectedShippingAddress);
 
-      // Create order - cast shippingAddress to Json type
+      // Create order first
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user!.id,
-          total_amount: total,
-          shipping_address: shippingAddress as any, // Cast to Json type
+          total_amount: total + 9.99 + (total * 0.1), // Include shipping and tax
+          shipping_address: shippingAddress as any,
           shipping_address_id: selectedShippingAddress,
           billing_address_id: billingAddressId,
-          payment_method: 'credit_card',
+          payment_method: selectedPaymentMethod,
           status: 'pending'
         })
         .select()
@@ -194,27 +196,74 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Clear cart
+      // Process payment based on selected method
+      let paymentResponse;
+      const paymentAmount = total + 9.99 + (total * 0.1);
+
+      switch (selectedPaymentMethod) {
+        case 'stripe':
+          paymentResponse = await supabase.functions.invoke('create-stripe-payment', {
+            body: { 
+              amount: paymentAmount,
+              orderId: order.id,
+              currency: 'usd'
+            }
+          });
+          break;
+        case 'phonepe':
+          paymentResponse = await supabase.functions.invoke('create-phonepe-payment', {
+            body: { 
+              amount: paymentAmount * 100, // PhonePe expects amount in paise
+              orderId: order.id
+            }
+          });
+          break;
+        case 'paytm':
+          paymentResponse = await supabase.functions.invoke('create-paytm-payment', {
+            body: { 
+              amount: paymentAmount,
+              orderId: order.id
+            }
+          });
+          break;
+        default:
+          throw new Error('Invalid payment method selected');
+      }
+
+      if (paymentResponse.error) {
+        throw new Error(paymentResponse.error.message || 'Payment processing failed');
+      }
+
+      // Clear cart after successful order creation
       const { error: clearCartError } = await supabase
         .from('cart_items')
         .delete()
         .eq('user_id', user!.id);
 
-      if (clearCartError) throw clearCartError;
+      if (clearCartError) console.warn('Failed to clear cart:', clearCartError);
 
-      return order;
+      return { order, paymentUrl: paymentResponse.data.paymentUrl };
     },
-    onSuccess: (order) => {
+    onSuccess: ({ order, paymentUrl }) => {
       queryClient.invalidateQueries({ queryKey: ['cart-items'] });
       toast({
-        title: "Order placed successfully!",
-        description: `Your order #${order.id.slice(0, 8)} has been placed.`,
+        title: "Order created successfully!",
+        description: `Redirecting to payment gateway...`,
       });
-      navigate('/');
+      
+      // Redirect to payment gateway
+      if (paymentUrl) {
+        window.open(paymentUrl, '_blank');
+      }
+      
+      // Redirect to account page after a short delay
+      setTimeout(() => {
+        navigate('/account');
+      }, 2000);
     },
     onError: (error: any) => {
       toast({
-        title: "Error placing order",
+        title: "Error creating order",
         description: error.message,
         variant: "destructive",
       });
@@ -388,6 +437,12 @@ const Checkout = () => {
             </CardContent>
           </Card>
 
+          {/* Payment Method Selection */}
+          <PaymentSelector 
+            selectedMethod={selectedPaymentMethod}
+            onPaymentMethodSelect={setSelectedPaymentMethod}
+          />
+
           {/* New Address Form */}
           {showNewAddressForm && (
             <Card>
@@ -560,10 +615,12 @@ const Checkout = () => {
                 className="w-full"
                 size="lg"
                 onClick={() => placeOrderMutation.mutate()}
-                disabled={placeOrderMutation.isPending || !selectedShippingAddress}
+                disabled={placeOrderMutation.isPending || !selectedShippingAddress || !selectedPaymentMethod}
               >
                 {placeOrderMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Place Order
+                {selectedPaymentMethod === 'stripe' && 'Pay with Stripe'}
+                {selectedPaymentMethod === 'phonepe' && 'Pay with PhonePe'}
+                {selectedPaymentMethod === 'paytm' && 'Pay with Paytm'}
               </Button>
             </CardContent>
           </Card>
