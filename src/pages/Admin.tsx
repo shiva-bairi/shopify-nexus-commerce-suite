@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +11,9 @@ import { Loader2, Users, Package, ShoppingCart, DollarSign } from 'lucide-react'
 import AdminUsers from '@/components/Admin/AdminUsers';
 import AdminProducts from '@/components/Admin/AdminProducts';
 import AdminOrders from '@/components/Admin/AdminOrders';
+import AdminAnalytics from '@/components/Admin/AdminAnalytics';
+import AdminSupport from '@/components/Admin/AdminSupport';
+import Layout from '@/components/Layout';
 
 const Admin = () => {
   const { user, loading } = useAuth();
@@ -51,6 +53,8 @@ const Admin = () => {
     enabled: !!user && isAdmin
   });
 
+  const [activeTab, setActiveTab] = useState('products');
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/login');
@@ -80,85 +84,43 @@ const Admin = () => {
     );
   }
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'products':
+        return <AdminProducts />;
+      case 'orders':
+        return <AdminOrders />;
+      case 'users':
+        return <AdminUsers />;
+      case 'analytics':
+        return <AdminAnalytics />;
+      case 'support':
+        return <AdminSupport />;
+      default:
+        return <AdminProducts />;
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <Badge variant="secondary">Administrator</Badge>
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="support">Support</TabsTrigger>
+          </TabsList>
+
+          <div className="mt-6">
+            {renderContent()}
+          </div>
+        </Tabs>
       </div>
-
-      {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats?.totalUsers}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats?.totalProducts}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats?.totalOrders}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `$${stats?.totalRevenue.toFixed(2)}`}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Admin Tabs */}
-      <Tabs defaultValue="users" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users">
-          <AdminUsers />
-        </TabsContent>
-
-        <TabsContent value="products">
-          <AdminProducts />
-        </TabsContent>
-
-        <TabsContent value="orders">
-          <AdminOrders />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </Layout>
   );
 };
 
