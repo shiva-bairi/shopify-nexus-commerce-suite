@@ -13,7 +13,7 @@ import AdminProducts from '@/components/Admin/AdminProducts';
 import AdminOrders from '@/components/Admin/AdminOrders';
 import AdminAnalytics from '@/components/Admin/AdminAnalytics';
 import AdminSupport from '@/components/Admin/AdminSupport';
-import Layout from '@/components/Layout';
+import Layout from '@/components/Layout/Layout';
 
 const Admin = () => {
   const { user, loading } = useAuth();
