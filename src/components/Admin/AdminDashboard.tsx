@@ -16,7 +16,18 @@ const AdminDashboard = () => {
           supabase.from('orders').select('*', { count: 'exact', head: true }),
           supabase.from('orders').select('total_amount').eq('payment_status', 'paid'),
           supabase.from('products').select('name, stock, low_stock_threshold').lte('stock', 10),
-          supabase.from('orders').select('id, total_amount, status, created_at, profiles(first_name, last_name)').order('created_at', { ascending: false }).limit(5)
+          supabase
+            .from('orders')
+            .select(`
+              id, 
+              total_amount, 
+              status, 
+              created_at,
+              user_id,
+              profiles!inner(first_name, last_name)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(5)
         ]);
 
         const totalRevenue = revenueResult.data?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
