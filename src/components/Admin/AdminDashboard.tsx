@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,12 +22,29 @@ const AdminDashboard = () => {
               total_amount, 
               status, 
               created_at,
-              user_id,
-              profiles!inner(first_name, last_name)
+              user_id
             `)
             .order('created_at', { ascending: false })
             .limit(5)
         ]);
+
+        // Get user profiles for recent orders
+        const orderUserIds = recentOrdersResult.data?.map(order => order.user_id) || [];
+        const profilesResult = orderUserIds.length > 0 
+          ? await supabase
+              .from('profiles')
+              .select('id, first_name, last_name')
+              .in('id', orderUserIds)
+          : { data: [] };
+
+        // Combine orders with profile data
+        const recentOrdersWithProfiles = recentOrdersResult.data?.map(order => {
+          const profile = profilesResult.data?.find(p => p.id === order.user_id);
+          return {
+            ...order,
+            profiles: profile || { first_name: 'Unknown', last_name: 'Customer' }
+          };
+        }) || [];
 
         const totalRevenue = revenueResult.data?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
 
@@ -38,7 +54,7 @@ const AdminDashboard = () => {
           totalOrders: ordersResult.count || 0,
           totalRevenue: totalRevenue,
           lowStockProducts: lowStockResult.data || [],
-          recentOrders: recentOrdersResult.data || []
+          recentOrders: recentOrdersWithProfiles
         };
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error);
