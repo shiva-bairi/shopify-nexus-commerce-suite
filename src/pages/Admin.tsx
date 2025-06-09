@@ -15,7 +15,6 @@ import AdminOrders from '@/components/Admin/AdminOrders';
 import AdminAnalytics from '@/components/Admin/AdminAnalytics';
 import AdminSupport from '@/components/Admin/AdminSupport';
 import AdminDashboard from '@/components/Admin/AdminDashboard';
-import Layout from '@/components/Layout/Layout';
 
 const Admin = () => {
   const { user, loading } = useAuth();
@@ -57,60 +56,48 @@ const Admin = () => {
 
   useEffect(() => {
     console.log('Admin check state:', { isAdmin, adminCheckLoading, user: !!user });
-    if (!adminCheckLoading && !isAdmin && user) {
-      console.log('User is not admin, redirecting to home');
-      // Don't redirect immediately, show access denied message instead
-    }
-  }, [isAdmin, adminCheckLoading, user, navigate]);
+  }, [isAdmin, adminCheckLoading, user]);
 
   if (loading || adminCheckLoading) {
     return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading admin panel...</span>
-        </div>
-      </Layout>
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading admin panel...</span>
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
-          <p className="text-gray-600">Please log in to access the admin panel.</p>
-        </div>
-      </Layout>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+        <p className="text-gray-600">Please log in to access the admin panel.</p>
+      </div>
     );
   }
 
   if (adminError) {
     return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold mb-4">Admin Check Failed</h1>
-          <p className="text-gray-600">Error checking admin status: {adminError.message}</p>
-          <p className="text-sm text-gray-500 mt-2">
-            This might mean the admin_users table or is_admin function is not set up correctly.
-          </p>
-        </div>
-      </Layout>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Admin Check Failed</h1>
+        <p className="text-gray-600">Error checking admin status: {adminError.message}</p>
+        <p className="text-sm text-gray-500 mt-2">
+          This might mean the admin_users table or is_admin function is not set up correctly.
+        </p>
+      </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You don't have permission to access the admin panel.</p>
-          <p className="text-sm text-gray-500">
-            Your user ID: {user.id}<br />
-            To grant admin access, an existing admin needs to add your user to the admin_users table.
-          </p>
-        </div>
-      </Layout>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-gray-600 mb-4">You don't have permission to access the admin panel.</p>
+        <p className="text-sm text-gray-500">
+          Your user ID: {user.id}<br />
+          To grant admin access, an existing admin needs to add your user to the admin_users table.
+        </p>
+      </div>
     );
   }
 
@@ -134,29 +121,27 @@ const Admin = () => {
   };
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <Badge variant="secondary">Welcome, Admin</Badge>
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="support">Support</TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            {renderContent()}
-          </div>
-        </Tabs>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <Badge variant="secondary">Welcome, Admin</Badge>
       </div>
-    </Layout>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="support">Support</TabsTrigger>
+        </TabsList>
+
+        <div className="mt-6">
+          {renderContent()}
+        </div>
+      </Tabs>
+    </div>
   );
 };
 
