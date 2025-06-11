@@ -15,24 +15,23 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
-  // Check admin status if required
+  // Check admin status if required - use the same method as AdminLayout
   const { data: isAdmin, isLoading: adminLoading } = useQuery({
     queryKey: ['admin-check', user?.id],
     queryFn: async () => {
       if (!user?.id) return false;
       
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Error checking admin status:', error);
+      try {
+        const { data, error } = await supabase.rpc('is_admin', { user_uuid: user.id });
+        if (error) {
+          console.error('Admin check error:', error);
+          return false;
+        }
+        return data;
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
         return false;
       }
-      
-      return !!data;
     },
     enabled: !!user?.id && requireAdmin
   });
@@ -56,16 +55,9 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: 
     return <Navigate to="/" replace />;
   }
 
-  // Check admin access
+  // Check admin access - redirect to admin login if not admin
   if (requireAdmin && user && !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
-          <p className="text-gray-600">You don't have admin privileges to access this page.</p>
-        </div>
-      </div>
-    );
+    return <Navigate to="/admin/login" replace />;
   }
 
   return <>{children}</>;

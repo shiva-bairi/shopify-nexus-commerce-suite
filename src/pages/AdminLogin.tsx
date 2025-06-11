@@ -34,7 +34,12 @@ const AdminLogin = () => {
       if (isAdmin) {
         navigate('/admin/dashboard');
       } else {
-        navigate('/');
+        // If user is logged in but not admin, show them they need admin access
+        toast({
+          title: "Access Denied",
+          description: "You don't have admin privileges. Please contact an administrator.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error checking admin status:', error);

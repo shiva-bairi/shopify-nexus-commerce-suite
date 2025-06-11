@@ -7,60 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { useEffect } from 'react';
-import { Shield, ArrowLeft, AlertTriangle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Shield, ArrowLeft } from 'lucide-react';
 
 const AdminSignup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [adminKey, setAdminKey] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (user) {
-      navigate('/admin');
-    }
-  }, [user, navigate]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (password !== confirmPassword) {
-      toast({
-        title: "Password mismatch",
-        description: "Passwords do not match. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Simple admin key validation (in production, this should be more secure)
-    if (adminKey !== 'ADMIN_SIGNUP_KEY_2024') {
-      toast({
-        title: "Invalid admin key",
-        description: "The admin signup key is incorrect.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -68,13 +25,8 @@ const AdminSignup = () => {
         email,
         password,
         options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            is_admin_signup: true,
-          },
-          emailRedirectTo: `${window.location.origin}/admin`,
-        },
+          emailRedirectTo: `${window.location.origin}/admin/login`
+        }
       });
 
       if (error) {
@@ -87,35 +39,10 @@ const AdminSignup = () => {
       }
 
       if (data.user) {
-        // Add user to admin_users table
-        const { error: adminError } = await supabase
-          .from('admin_users')
-          .insert([{
-            user_id: data.user.id,
-            role: 'admin',
-            permissions: {
-              products: true,
-              orders: true,
-              users: true,
-              analytics: true,
-              support: true
-            }
-          }]);
-
-        if (adminError) {
-          console.error('Error adding admin user:', adminError);
-          toast({
-            title: "Admin setup failed",
-            description: "Account created but admin privileges could not be assigned. Contact a super admin.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Admin account created!",
-            description: "Please check your email to verify your account, then you can access the admin portal.",
-          });
-        }
-        
+        toast({
+          title: "Account created successfully!",
+          description: "Please check your email to verify your account. Note: Admin privileges must be granted by an existing administrator.",
+        });
         navigate('/admin/login');
       }
     } catch (error) {
@@ -138,42 +65,11 @@ const AdminSignup = () => {
           </div>
           <CardTitle className="text-2xl font-bold">Request Admin Access</CardTitle>
           <CardDescription>
-            Create an admin account to manage the system
+            Create an account and request admin privileges
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Admin signup requires a special key. Contact your system administrator if you need access.
-            </AlertDescription>
-          </Alert>
-
           <form onSubmit={handleSignup} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                  placeholder="First name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                  placeholder="Last name"
-                />
-              </div>
-            </div>
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
@@ -194,42 +90,19 @@ const AdminSignup = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Create a password"
-                minLength={6}
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                placeholder="Confirm your password"
-                minLength={6}
-              />
-            </div>
-            <div>
-              <Label htmlFor="adminKey">Admin Signup Key</Label>
-              <Input
-                id="adminKey"
-                type="password"
-                value={adminKey}
-                onChange={(e) => setAdminKey(e.target.value)}
-                required
-                placeholder="Enter admin signup key"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating admin account...' : 'Create Admin Account'}
+              {loading ? 'Creating account...' : 'Request Admin Account'}
             </Button>
           </form>
+          
           <div className="mt-6 space-y-4">
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Already have admin access?{' '}
+                Already have an account?{' '}
                 <Link to="/admin/login" className="font-medium text-blue-600 hover:text-blue-500">
-                  Sign in
+                  Sign in here
                 </Link>
               </p>
             </div>
@@ -241,6 +114,12 @@ const AdminSignup = () => {
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to main site
               </Link>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Creating an account does not automatically grant admin privileges. 
+                Contact an existing administrator to grant you admin access.
+              </p>
             </div>
           </div>
         </CardContent>
