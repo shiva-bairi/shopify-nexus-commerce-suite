@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Search, Plus, Edit, Trash2, Package } from 'lucide-react';
+import { Loader2, Search, Plus, Edit, Trash2, Package, Star, StarOff } from 'lucide-react';
 import ProductForm from './ProductForm';
 import AdminInventory from './AdminInventory';
 import AdminCoupons from './AdminCoupons';
@@ -50,23 +50,70 @@ const AdminProducts = () => {
 
   const toggleFeaturedMutation = useMutation({
     mutationFn: async ({ productId, isFeatured }: { productId: string; isFeatured: boolean }) => {
-      const { error } = await supabase
+      console.log('Toggling featured status for product:', productId, 'from', isFeatured, 'to', !isFeatured);
+      
+      const { data, error } = await supabase
         .from('products')
         .update({ is_featured: !isFeatured })
-        .eq('id', productId);
-      if (error) throw error;
+        .eq('id', productId)
+        .select();
+      
+      if (error) {
+        console.error('Error toggling featured status:', error);
+        throw error;
+      }
+      
+      console.log('Successfully updated product:', data);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast({
         title: "Success",
-        description: "Product updated successfully.",
+        description: "Product featured status updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Toggle featured mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to update product.",
+        description: "Failed to update product featured status.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateStockMutation = useMutation({
+    mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
+      console.log('Updating stock for product:', productId, 'to', newStock);
+      
+      const { data, error } = await supabase
+        .from('products')
+        .update({ stock: newStock })
+        .eq('id', productId)
+        .select();
+      
+      if (error) {
+        console.error('Error updating stock:', error);
+        throw error;
+      }
+      
+      console.log('Successfully updated stock:', data);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
+      toast({
+        title: "Success",
+        description: "Product stock updated successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error('Update stock mutation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update product stock.",
         variant: "destructive",
       });
     }
@@ -74,11 +121,17 @@ const AdminProducts = () => {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
+      console.log('Deleting product:', productId);
+      
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', productId);
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Error deleting product:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -87,7 +140,8 @@ const AdminProducts = () => {
         description: "Product deleted successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Delete product mutation error:', error);
       toast({
         title: "Error",
         description: "Failed to delete product.",
@@ -100,13 +154,18 @@ const AdminProducts = () => {
     toggleFeaturedMutation.mutate({ productId, isFeatured });
   };
 
+  const handleStockChange = (productId: string, currentStock: number, change: number) => {
+    const newStock = Math.max(0, currentStock + change);
+    updateStockMutation.mutate({ productId, newStock });
+  };
+
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setShowProductForm(true);
   };
 
   const handleDelete = (productId: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+    if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
       deleteProductMutation.mutate(productId);
     }
   };
@@ -182,9 +241,29 @@ const AdminProducts = () => {
                       <TableCell>{product.brand || 'No brand'}</TableCell>
                       <TableCell>${Number(product.price).toFixed(2)}</TableCell>
                       <TableCell>
-                        <Badge variant={product.stock > 10 ? 'secondary' : product.stock > 0 ? 'outline' : 'destructive'}>
-                          {product.stock} in stock
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={product.stock > 10 ? 'secondary' : product.stock > 0 ? 'outline' : 'destructive'}>
+                            {product.stock} in stock
+                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStockChange(product.id, product.stock, -1)}
+                              disabled={product.stock === 0 || updateStockMutation.isPending}
+                            >
+                              -
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStockChange(product.id, product.stock, 1)}
+                              disabled={updateStockMutation.isPending}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={product.is_featured ? 'default' : 'secondary'}>
@@ -199,7 +278,17 @@ const AdminProducts = () => {
                             onClick={() => handleToggleFeatured(product.id, product.is_featured)}
                             disabled={toggleFeaturedMutation.isPending}
                           >
-                            {product.is_featured ? 'Unfeature' : 'Feature'}
+                            {product.is_featured ? (
+                              <>
+                                <StarOff className="h-4 w-4 mr-1" />
+                                Unfeature
+                              </>
+                            ) : (
+                              <>
+                                <Star className="h-4 w-4 mr-1" />
+                                Feature
+                              </>
+                            )}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
                             <Edit className="h-4 w-4" />

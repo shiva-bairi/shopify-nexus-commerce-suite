@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { X } from 'lucide-react';
+import { X, Save, Loader2 } from 'lucide-react';
 
 interface ProductFormProps {
   product?: any;
@@ -20,11 +20,11 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
-    price: product?.price || '',
-    stock: product?.stock || '',
+    price: product?.price?.toString() || '',
+    stock: product?.stock?.toString() || '',
     brand: product?.brand || '',
     is_featured: product?.is_featured || false,
-    low_stock_threshold: product?.low_stock_threshold || 10,
+    low_stock_threshold: product?.low_stock_threshold?.toString() || '10',
     sku: product?.sku || '',
   });
 
@@ -33,28 +33,46 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
 
   const createProductMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await supabase
+      console.log('Creating product with data:', data);
+      
+      const productData = {
+        name: data.name,
+        description: data.description || null,
+        price: parseFloat(data.price),
+        stock: parseInt(data.stock),
+        brand: data.brand || null,
+        is_featured: data.is_featured,
+        low_stock_threshold: parseInt(data.low_stock_threshold),
+        sku: data.sku || null,
+      };
+
+      const { data: result, error } = await supabase
         .from('products')
-        .insert([{
-          ...data,
-          price: parseFloat(data.price),
-          stock: parseInt(data.stock),
-          low_stock_threshold: parseInt(data.low_stock_threshold),
-        }]);
-      if (error) throw error;
+        .insert([productData])
+        .select();
+      
+      if (error) {
+        console.error('Error creating product:', error);
+        throw error;
+      }
+      
+      console.log('Product created successfully:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
       toast({
         title: "Success",
         description: "Product created successfully.",
       });
       onClose();
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Create product mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to create product.",
+        description: "Failed to create product. Please check all fields.",
         variant: "destructive",
       });
     }
@@ -62,29 +80,48 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
 
   const updateProductMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await supabase
+      console.log('Updating product with data:', data);
+      
+      const productData = {
+        name: data.name,
+        description: data.description || null,
+        price: parseFloat(data.price),
+        stock: parseInt(data.stock),
+        brand: data.brand || null,
+        is_featured: data.is_featured,
+        low_stock_threshold: parseInt(data.low_stock_threshold),
+        sku: data.sku || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: result, error } = await supabase
         .from('products')
-        .update({
-          ...data,
-          price: parseFloat(data.price),
-          stock: parseInt(data.stock),
-          low_stock_threshold: parseInt(data.low_stock_threshold),
-        })
-        .eq('id', product.id);
-      if (error) throw error;
+        .update(productData)
+        .eq('id', product.id)
+        .select();
+      
+      if (error) {
+        console.error('Error updating product:', error);
+        throw error;
+      }
+      
+      console.log('Product updated successfully:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
       toast({
         title: "Success",
         description: "Product updated successfully.",
       });
       onClose();
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Update product mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to update product.",
+        description: "Failed to update product. Please check all fields.",
         variant: "destructive",
       });
     }
@@ -92,6 +129,35 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Product name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!formData.price || isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid price greater than 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!formData.stock || isNaN(parseInt(formData.stock)) || parseInt(formData.stock) < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid stock quantity (0 or greater).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (product) {
       updateProductMutation.mutate(formData);
     } else {
@@ -103,11 +169,16 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const isLoading = createProductMutation.isPending || updateProductMutation.isPending;
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{product ? 'Edit Product' : 'Add New Product'}</CardTitle>
-        <Button variant="ghost" size="sm" onClick={onClose}>
+        <CardTitle className="flex items-center gap-2">
+          <Save className="h-5 w-5" />
+          {product ? 'Edit Product' : 'Add New Product'}
+        </CardTitle>
+        <Button variant="ghost" size="sm" onClick={onClose} disabled={isLoading}>
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
@@ -121,6 +192,8 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 required
+                disabled={isLoading}
+                placeholder="Enter product name"
               />
             </div>
             <div>
@@ -129,27 +202,35 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
                 id="brand"
                 value={formData.brand}
                 onChange={(e) => handleChange('brand', e.target.value)}
+                disabled={isLoading}
+                placeholder="Enter brand name"
               />
             </div>
             <div>
-              <Label htmlFor="price">Price *</Label>
+              <Label htmlFor="price">Price * ($)</Label>
               <Input
                 id="price"
                 type="number"
                 step="0.01"
+                min="0"
                 value={formData.price}
                 onChange={(e) => handleChange('price', e.target.value)}
                 required
+                disabled={isLoading}
+                placeholder="0.00"
               />
             </div>
             <div>
-              <Label htmlFor="stock">Stock *</Label>
+              <Label htmlFor="stock">Stock Quantity *</Label>
               <Input
                 id="stock"
                 type="number"
+                min="0"
                 value={formData.stock}
                 onChange={(e) => handleChange('stock', e.target.value)}
                 required
+                disabled={isLoading}
+                placeholder="0"
               />
             </div>
             <div>
@@ -158,6 +239,8 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
                 id="sku"
                 value={formData.sku}
                 onChange={(e) => handleChange('sku', e.target.value)}
+                disabled={isLoading}
+                placeholder="Enter SKU"
               />
             </div>
             <div>
@@ -165,8 +248,11 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
               <Input
                 id="low_stock_threshold"
                 type="number"
+                min="0"
                 value={formData.low_stock_threshold}
                 onChange={(e) => handleChange('low_stock_threshold', e.target.value)}
+                disabled={isLoading}
+                placeholder="10"
               />
             </div>
           </div>
@@ -178,6 +264,8 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               rows={4}
+              disabled={isLoading}
+              placeholder="Enter product description"
             />
           </div>
 
@@ -186,6 +274,7 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
               id="is_featured"
               checked={formData.is_featured}
               onCheckedChange={(checked) => handleChange('is_featured', checked)}
+              disabled={isLoading}
             />
             <Label htmlFor="is_featured">Featured Product</Label>
           </div>
@@ -193,11 +282,22 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
           <div className="flex gap-2 pt-4">
             <Button
               type="submit"
-              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+              disabled={isLoading}
+              className="flex items-center gap-2"
             >
-              {product ? 'Update Product' : 'Create Product'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {product ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  {product ? 'Update Product' : 'Create Product'}
+                </>
+              )}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
             </Button>
           </div>
