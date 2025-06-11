@@ -32,7 +32,7 @@ const AdminLogin = () => {
     try {
       const { data: isAdmin } = await supabase.rpc('is_admin', { user_uuid: user.id });
       if (isAdmin) {
-        navigate('/admin');
+        navigate('/admin/dashboard');
       } else {
         navigate('/');
       }
@@ -90,7 +90,7 @@ const AdminLogin = () => {
           title: "Welcome, Admin!",
           description: "You have been logged in successfully.",
         });
-        navigate('/admin');
+        navigate('/admin/dashboard');
       }
     } catch (error) {
       toast({

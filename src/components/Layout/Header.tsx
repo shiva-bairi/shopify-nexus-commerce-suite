@@ -88,7 +88,7 @@ const Header = () => {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/admin" className="flex items-center text-blue-600">
+                      <Link to="/admin/dashboard" className="flex items-center text-blue-600">
                         <Shield className="h-4 w-4 mr-2" />
                         Admin Dashboard
                       </Link>

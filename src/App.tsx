@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout/Layout";
+import AdminLayout from "./components/Layout/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -17,10 +18,19 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Account from "./pages/Account";
-import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import AdminSignup from "./pages/AdminSignup";
 import NotFound from "./pages/NotFound";
+
+// Import new admin pages
+import AdminDashboardPage from "./pages/admin/AdminDashboard";
+import AdminProductsPage from "./pages/admin/AdminProducts";
+import AdminOrdersPage from "./pages/admin/AdminOrders";
+import AdminUsersPage from "./pages/admin/AdminUsers";
+import AdminAnalyticsPage from "./pages/admin/AdminAnalytics";
+import AdminSupportPage from "./pages/admin/AdminSupport";
+import AdminInventoryPage from "./pages/admin/AdminInventory";
+import AdminCouponsPage from "./pages/admin/AdminCoupons";
 
 const queryClient = new QueryClient();
 
@@ -31,11 +41,32 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Routes without Layout (Admin auth pages) */}
+          {/* Admin auth routes (without any layout) */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/signup" element={<AdminSignup />} />
           
-          {/* Routes with Layout */}
+          {/* Admin routes with AdminLayout */}
+          <Route path="/admin/*" element={
+            <ProtectedRoute requireAuth={true} requireAdmin={true}>
+              <AdminLayout>
+                <Routes>
+                  <Route path="dashboard" element={<AdminDashboardPage />} />
+                  <Route path="products" element={<AdminProductsPage />} />
+                  <Route path="orders" element={<AdminOrdersPage />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="inventory" element={<AdminInventoryPage />} />
+                  <Route path="coupons" element={<AdminCouponsPage />} />
+                  <Route path="analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="support" element={<AdminSupportPage />} />
+                  {/* Redirect /admin to /admin/dashboard */}
+                  <Route path="" element={<AdminDashboardPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Public routes with main Layout */}
           <Route path="/*" element={
             <Layout>
               <Routes>
@@ -91,14 +122,6 @@ const App = () => (
                   element={
                     <ProtectedRoute requireAuth={true}>
                       <PaymentSuccess />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/admin" 
-                  element={
-                    <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                      <Admin />
                     </ProtectedRoute>
                   } 
                 />
