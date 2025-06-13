@@ -24,7 +24,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminSignup from "./pages/AdminSignup";
 import NotFound from "./pages/NotFound";
 
-// Import new admin pages
+// Import all admin pages
 import AdminDashboardPage from "./pages/admin/AdminDashboard";
 import AdminProductsPage from "./pages/admin/AdminProducts";
 import AdminOrdersPage from "./pages/admin/AdminOrders";
@@ -33,6 +33,10 @@ import AdminAnalyticsPage from "./pages/admin/AdminAnalytics";
 import AdminSupportPage from "./pages/admin/AdminSupport";
 import AdminInventoryPage from "./pages/admin/AdminInventory";
 import AdminCouponsPage from "./pages/admin/AdminCoupons";
+import AdminShippingPage from "./pages/admin/AdminShipping";
+import AdminMarketingPage from "./pages/admin/AdminMarketing";
+import AdminFinancePage from "./pages/admin/AdminFinance";
+import AdminSettingsPage from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +64,10 @@ const App = () => (
                   <Route path="coupons" element={<AdminCouponsPage />} />
                   <Route path="analytics" element={<AdminAnalyticsPage />} />
                   <Route path="support" element={<AdminSupportPage />} />
+                  <Route path="shipping" element={<AdminShippingPage />} />
+                  <Route path="marketing" element={<AdminMarketingPage />} />
+                  <Route path="finance" element={<AdminFinancePage />} />
+                  <Route path="settings" element={<AdminSettingsPage />} />
                   {/* Redirect /admin to /admin/dashboard */}
                   <Route path="" element={<AdminDashboardPage />} />
                   <Route path="*" element={<NotFound />} />

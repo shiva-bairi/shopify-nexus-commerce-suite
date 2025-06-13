@@ -34,7 +34,7 @@ const BottomNavigation = () => {
       id: 'home'
     },
     {
-      label: 'Products',
+      label: 'Shop',
       path: '/products',
       icon: Package,
       id: 'products'

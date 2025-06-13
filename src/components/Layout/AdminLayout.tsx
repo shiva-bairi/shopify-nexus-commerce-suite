@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Shield, Home, Package, ShoppingCart, Users, BarChart3, LifeBuoy, Archive, Gift } from 'lucide-react';
+import { Loader2, Shield, Home, Package, ShoppingCart, Users, BarChart3, LifeBuoy, Archive, Gift, Settings, CreditCard, Truck, MessageSquare, Megaphone, Brain, DollarSign, FileText, UserCog, Building, Scale } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -55,11 +55,14 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/admin/dashboard', label: 'Dashboard', icon: Home },
     { path: '/admin/products', label: 'Products', icon: Package },
     { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-    { path: '/admin/users', label: 'Users', icon: Users },
     { path: '/admin/inventory', label: 'Inventory', icon: Archive },
-    { path: '/admin/coupons', label: 'Coupons', icon: Gift },
-    { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/admin/shipping', label: 'Shipping', icon: Truck },
+    { path: '/admin/users', label: 'Customers', icon: Users },
     { path: '/admin/support', label: 'Support', icon: LifeBuoy },
+    { path: '/admin/marketing', label: 'Marketing', icon: Megaphone },
+    { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/admin/finance', label: 'Finance', icon: DollarSign },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
   return (
