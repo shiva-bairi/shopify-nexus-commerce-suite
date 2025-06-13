@@ -1,9 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -53,13 +55,83 @@ interface WishlistItem {
   };
 }
 
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+}
+
 const Account = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('orders');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: ''
+  });
 
-  // Fetch user orders - always call this hook
+  // Fetch user profile
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as Profile;
+    },
+    enabled: !!user
+  });
+
+  // Set profile data when loaded
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        phone: profile.phone || ''
+      });
+    }
+  }, [profile]);
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: typeof profileData) => {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: user!.id,
+          ...data,
+          updated_at: new Date().toISOString()
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      setEditingProfile(false);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update profile.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fetch user orders
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ['user-orders'],
     queryFn: async () => {
@@ -77,6 +149,7 @@ const Account = () => {
             )
           )
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as Order[];
@@ -84,7 +157,7 @@ const Account = () => {
     enabled: !!user
   });
 
-  // Fetch user addresses - always call this hook
+  // Fetch user addresses
   const { data: addresses, isLoading: addressesLoading } = useQuery({
     queryKey: ['user-addresses'],
     queryFn: async () => {
@@ -92,6 +165,7 @@ const Account = () => {
       const { data, error } = await supabase
         .from('addresses')
         .select('*')
+        .eq('user_id', user.id)
         .order('is_default', { ascending: false });
       if (error) throw error;
       return data as Address[];
@@ -99,7 +173,7 @@ const Account = () => {
     enabled: !!user
   });
 
-  // Fetch wishlist - always call this hook
+  // Fetch wishlist
   const { data: wishlist, isLoading: wishlistLoading } = useQuery({
     queryKey: ['user-wishlist'],
     queryFn: async () => {
@@ -112,21 +186,31 @@ const Account = () => {
             id, name, price, discount_price,
             product_images (image_url, is_primary)
           )
-        `);
+        `)
+        .eq('user_id', user.id);
       if (error) throw error;
       return data as WishlistItem[];
     },
     enabled: !!user
   });
 
-  // Handle navigation after all hooks are called
+  // Handle navigation after auth check
   useEffect(() => {
-    if (!user) {
+    if (!loading && !user) {
       navigate('/login');
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
-  // Don't render content if user is not authenticated
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render if no user
   if (!user) {
     return null;
   }
@@ -138,6 +222,10 @@ const Account = () => {
       description: "You have been signed out successfully.",
     });
     navigate('/');
+  };
+
+  const handleProfileSave = () => {
+    updateProfileMutation.mutate(profileData);
   };
 
   const getOrderStatusColor = (status: string) => {
@@ -156,10 +244,12 @@ const Account = () => {
       const { error } = await supabase
         .from('wishlists')
         .delete()
-        .eq('product_id', productId);
+        .eq('product_id', productId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
+      queryClient.invalidateQueries({ queryKey: ['user-wishlist'] });
       toast({
         title: "Removed from wishlist",
         description: "Product has been removed from your wishlist.",
@@ -382,22 +472,69 @@ const Account = () => {
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                Profile Information
+                <Button 
+                  variant="outline" 
+                  onClick={() => editingProfile ? handleProfileSave() : setEditingProfile(true)}
+                  disabled={updateProfileMutation.isPending}
+                >
+                  {editingProfile ? 'Save' : 'Edit'}
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{user.email}</p>
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" value={user.email} disabled />
                 </div>
+                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input 
+                    id="firstName"
+                    value={profileData.first_name}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, first_name: e.target.value }))}
+                    disabled={!editingProfile}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input 
+                    id="lastName"
+                    value={profileData.last_name}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, last_name: e.target.value }))}
+                    disabled={!editingProfile}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input 
+                    id="phone"
+                    value={profileData.phone}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                    disabled={!editingProfile}
+                  />
+                </div>
+
+                <div>
+                  <Label>User ID</Label>
                   <p className="text-gray-900 font-mono text-sm">{user.id}</p>
                 </div>
+                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Created</label>
+                  <Label>Account Created</Label>
                   <p className="text-gray-900">{new Date(user.created_at).toLocaleDateString()}</p>
                 </div>
+                
+                {editingProfile && (
+                  <Button variant="outline" onClick={() => setEditingProfile(false)}>
+                    Cancel
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

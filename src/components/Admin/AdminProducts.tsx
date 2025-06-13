@@ -18,10 +18,14 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  discount_price?: number;
   stock: number;
   brand: string | null;
   is_featured: boolean;
   created_at: string;
+  description?: string;
+  category_id?: string;
+  sku?: string;
 }
 
 const AdminProducts = () => {
@@ -50,20 +54,16 @@ const AdminProducts = () => {
 
   const toggleFeaturedMutation = useMutation({
     mutationFn: async ({ productId, isFeatured }: { productId: string; isFeatured: boolean }) => {
-      console.log('Toggling featured status for product:', productId, 'from', isFeatured, 'to', !isFeatured);
-      
       const { data, error } = await supabase
         .from('products')
-        .update({ is_featured: !isFeatured })
+        .update({ 
+          is_featured: !isFeatured,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', productId)
         .select();
       
-      if (error) {
-        console.error('Error toggling featured status:', error);
-        throw error;
-      }
-      
-      console.log('Successfully updated product:', data);
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
@@ -85,20 +85,16 @@ const AdminProducts = () => {
 
   const updateStockMutation = useMutation({
     mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
-      console.log('Updating stock for product:', productId, 'to', newStock);
-      
       const { data, error } = await supabase
         .from('products')
-        .update({ stock: newStock })
+        .update({ 
+          stock: newStock,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', productId)
         .select();
       
-      if (error) {
-        console.error('Error updating stock:', error);
-        throw error;
-      }
-      
-      console.log('Successfully updated stock:', data);
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
@@ -121,17 +117,12 @@ const AdminProducts = () => {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
-      console.log('Deleting product:', productId);
-      
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', productId);
       
-      if (error) {
-        console.error('Error deleting product:', error);
-        throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -150,13 +141,19 @@ const AdminProducts = () => {
     }
   });
 
-  const handleToggleFeatured = (productId: string, isFeatured: boolean) => {
-    toggleFeaturedMutation.mutate({ productId, isFeatured });
+  const handleToggleFeatured = (product: Product) => {
+    toggleFeaturedMutation.mutate({ 
+      productId: product.id, 
+      isFeatured: product.is_featured 
+    });
   };
 
-  const handleStockChange = (productId: string, currentStock: number, change: number) => {
-    const newStock = Math.max(0, currentStock + change);
-    updateStockMutation.mutate({ productId, newStock });
+  const handleStockChange = (product: Product, change: number) => {
+    const newStock = Math.max(0, product.stock + change);
+    updateStockMutation.mutate({ 
+      productId: product.id, 
+      newStock 
+    });
   };
 
   const handleEdit = (product: Product) => {
@@ -175,11 +172,17 @@ const AdminProducts = () => {
     setEditingProduct(null);
   };
 
+  const handleFormSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    handleCloseForm();
+  };
+
   if (showProductForm) {
     return (
       <ProductForm
         product={editingProduct}
         onClose={handleCloseForm}
+        onSuccess={handleFormSuccess}
       />
     );
   }
@@ -200,7 +203,10 @@ const AdminProducts = () => {
                 <Package className="h-5 w-5" />
                 Product Management
               </CardTitle>
-              <Button onClick={() => setShowProductForm(true)}>
+              <Button onClick={() => {
+                setEditingProduct(null);
+                setShowProductForm(true);
+              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Product
               </Button>
@@ -239,7 +245,16 @@ const AdminProducts = () => {
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>{product.brand || 'No brand'}</TableCell>
-                      <TableCell>${Number(product.price).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="font-medium">${Number(product.price).toFixed(2)}</span>
+                          {product.discount_price && (
+                            <div className="text-sm text-green-600">
+                              Sale: ${Number(product.discount_price).toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge variant={product.stock > 10 ? 'secondary' : product.stock > 0 ? 'outline' : 'destructive'}>
@@ -249,7 +264,7 @@ const AdminProducts = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleStockChange(product.id, product.stock, -1)}
+                              onClick={() => handleStockChange(product, -1)}
                               disabled={product.stock === 0 || updateStockMutation.isPending}
                             >
                               -
@@ -257,7 +272,7 @@ const AdminProducts = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleStockChange(product.id, product.stock, 1)}
+                              onClick={() => handleStockChange(product, 1)}
                               disabled={updateStockMutation.isPending}
                             >
                               +
@@ -275,7 +290,7 @@ const AdminProducts = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleToggleFeatured(product.id, product.is_featured)}
+                            onClick={() => handleToggleFeatured(product)}
                             disabled={toggleFeaturedMutation.isPending}
                           >
                             {product.is_featured ? (
@@ -290,7 +305,11 @@ const AdminProducts = () => {
                               </>
                             )}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleEdit(product)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 

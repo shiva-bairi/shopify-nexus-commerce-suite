@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -86,7 +87,8 @@ const Checkout = () => {
             id, name, price, discount_price,
             product_images (image_url, is_primary)
           )
-        `);
+        `)
+        .eq('user_id', user!.id);
       if (error) throw error;
       return data as CartItem[];
     },
@@ -100,6 +102,7 @@ const Checkout = () => {
       const { data, error } = await supabase
         .from('addresses')
         .select('*')
+        .eq('user_id', user!.id)
         .order('is_default', { ascending: false });
       if (error) throw error;
       return data as Address[];
@@ -149,7 +152,7 @@ const Checkout = () => {
     }
   });
 
-  // Enhanced place order mutation with payment gateway integration
+  // Enhanced place order mutation with COD support
   const placeOrderMutation = useMutation({
     mutationFn: async () => {
       if (!cartItems || cartItems.length === 0) throw new Error('Cart is empty');
@@ -164,18 +167,20 @@ const Checkout = () => {
       }, 0);
 
       const shippingAddress = addresses?.find(addr => addr.id === selectedShippingAddress);
+      const finalAmount = total + 9.99 + (total * 0.1); // Include shipping and tax
 
       // Create order first
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user!.id,
-          total_amount: total + 9.99 + (total * 0.1), // Include shipping and tax
+          total_amount: finalAmount,
           shipping_address: shippingAddress as any,
           shipping_address_id: selectedShippingAddress,
           billing_address_id: billingAddressId,
           payment_method: selectedPaymentMethod,
-          status: 'pending'
+          status: selectedPaymentMethod === 'cod' ? 'confirmed' : 'pending',
+          payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'pending'
         })
         .select()
         .single();
@@ -196,70 +201,91 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Process payment based on selected method
-      let paymentResponse;
-      const paymentAmount = total + 9.99 + (total * 0.1);
+      // Handle payment based on method
+      if (selectedPaymentMethod === 'cod') {
+        // For COD, just clear cart and return success
+        const { error: clearCartError } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user!.id);
 
-      switch (selectedPaymentMethod) {
-        case 'stripe':
-          paymentResponse = await supabase.functions.invoke('create-stripe-payment', {
-            body: { 
-              amount: paymentAmount,
-              orderId: order.id,
-              currency: 'usd'
-            }
-          });
-          break;
-        case 'phonepe':
-          paymentResponse = await supabase.functions.invoke('create-phonepe-payment', {
-            body: { 
-              amount: paymentAmount * 100, // PhonePe expects amount in paise
-              orderId: order.id
-            }
-          });
-          break;
-        case 'paytm':
-          paymentResponse = await supabase.functions.invoke('create-paytm-payment', {
-            body: { 
-              amount: paymentAmount,
-              orderId: order.id
-            }
-          });
-          break;
-        default:
-          throw new Error('Invalid payment method selected');
+        if (clearCartError) console.warn('Failed to clear cart:', clearCartError);
+        return { order, paymentUrl: null, isCOD: true };
+      } else {
+        // Process online payment
+        let paymentResponse;
+
+        switch (selectedPaymentMethod) {
+          case 'stripe':
+            paymentResponse = await supabase.functions.invoke('create-stripe-payment', {
+              body: { 
+                amount: finalAmount,
+                orderId: order.id,
+                currency: 'usd'
+              }
+            });
+            break;
+          case 'phonepe':
+            paymentResponse = await supabase.functions.invoke('create-phonepe-payment', {
+              body: { 
+                amount: finalAmount * 100, // PhonePe expects amount in paise
+                orderId: order.id
+              }
+            });
+            break;
+          case 'paytm':
+            paymentResponse = await supabase.functions.invoke('create-paytm-payment', {
+              body: { 
+                amount: finalAmount,
+                orderId: order.id
+              }
+            });
+            break;
+          default:
+            throw new Error('Invalid payment method selected');
+        }
+
+        if (paymentResponse.error) {
+          throw new Error(paymentResponse.error.message || 'Payment processing failed');
+        }
+
+        // Clear cart after successful order creation
+        const { error: clearCartError } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user!.id);
+
+        if (clearCartError) console.warn('Failed to clear cart:', clearCartError);
+
+        return { order, paymentUrl: paymentResponse.data.paymentUrl, isCOD: false };
       }
-
-      if (paymentResponse.error) {
-        throw new Error(paymentResponse.error.message || 'Payment processing failed');
-      }
-
-      // Clear cart after successful order creation
-      const { error: clearCartError } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', user!.id);
-
-      if (clearCartError) console.warn('Failed to clear cart:', clearCartError);
-
-      return { order, paymentUrl: paymentResponse.data.paymentUrl };
     },
-    onSuccess: ({ order, paymentUrl }) => {
+    onSuccess: ({ order, paymentUrl, isCOD }) => {
       queryClient.invalidateQueries({ queryKey: ['cart-items'] });
-      toast({
-        title: "Order created successfully!",
-        description: `Redirecting to payment gateway...`,
-      });
       
-      // Redirect to payment gateway
-      if (paymentUrl) {
-        window.open(paymentUrl, '_blank');
-      }
-      
-      // Redirect to account page after a short delay
-      setTimeout(() => {
+      if (isCOD) {
+        toast({
+          title: "Order placed successfully!",
+          description: "Your Cash on Delivery order has been confirmed. You'll receive a confirmation shortly.",
+        });
+        // Redirect to account page immediately for COD orders
         navigate('/account');
-      }, 2000);
+      } else {
+        toast({
+          title: "Order created successfully!",
+          description: `Redirecting to payment gateway...`,
+        });
+        
+        // Redirect to payment gateway
+        if (paymentUrl) {
+          window.open(paymentUrl, '_blank');
+        }
+        
+        // Redirect to account page after a short delay
+        setTimeout(() => {
+          navigate('/account');
+        }, 2000);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -315,6 +341,21 @@ const Checkout = () => {
       </div>
     );
   }
+
+  const getButtonText = () => {
+    switch (selectedPaymentMethod) {
+      case 'cod':
+        return 'Place COD Order';
+      case 'stripe':
+        return 'Pay with Stripe';
+      case 'phonepe':
+        return 'Pay with PhonePe';
+      case 'paytm':
+        return 'Pay with Paytm';
+      default:
+        return 'Place Order';
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -604,6 +645,12 @@ const Checkout = () => {
                   <span>Tax</span>
                   <span>${tax.toFixed(2)}</span>
                 </div>
+                {selectedPaymentMethod === 'cod' && (
+                  <div className="flex justify-between text-orange-600">
+                    <span>COD Fee</span>
+                    <span>Free</span>
+                  </div>
+                )}
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
@@ -618,10 +665,14 @@ const Checkout = () => {
                 disabled={placeOrderMutation.isPending || !selectedShippingAddress || !selectedPaymentMethod}
               >
                 {placeOrderMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {selectedPaymentMethod === 'stripe' && 'Pay with Stripe'}
-                {selectedPaymentMethod === 'phonepe' && 'Pay with PhonePe'}
-                {selectedPaymentMethod === 'paytm' && 'Pay with Paytm'}
+                {getButtonText()}
               </Button>
+              
+              {selectedPaymentMethod === 'cod' && (
+                <p className="text-sm text-gray-600 text-center">
+                  You will pay in cash when the order is delivered to your address.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

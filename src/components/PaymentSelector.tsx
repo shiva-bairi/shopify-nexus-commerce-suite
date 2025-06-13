@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { CreditCard, Smartphone, Wallet } from 'lucide-react';
+import { CreditCard, Smartphone, Wallet, Banknote } from 'lucide-react';
 
 interface PaymentMethod {
   id: string;
@@ -36,6 +36,12 @@ const PaymentSelector = ({ onPaymentMethodSelect, selectedMethod }: PaymentSelec
       name: 'Paytm',
       icon: <Wallet className="h-6 w-6" />,
       description: 'Pay using Paytm Wallet or UPI'
+    },
+    {
+      id: 'cod',
+      name: 'Cash on Delivery',
+      icon: <Banknote className="h-6 w-6" />,
+      description: 'Pay with cash when your order is delivered'
     }
   ];
 
