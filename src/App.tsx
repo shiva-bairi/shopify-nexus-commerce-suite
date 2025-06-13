@@ -14,6 +14,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
+import Categories from "./pages/Categories";
+import Deals from "./pages/Deals";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -129,6 +131,8 @@ const App = () => (
                 {/* Public routes */}
                 <Route path="/products" element={<Products />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/deals" element={<Deals />} />
                 
                 {/* Catch-all route */}
                 <Route path="*" element={<NotFound />} />

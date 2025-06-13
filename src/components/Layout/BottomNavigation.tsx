@@ -30,29 +30,34 @@ const BottomNavigation = () => {
     {
       label: 'Home',
       path: '/',
-      icon: Home
+      icon: Home,
+      id: 'home'
     },
     {
       label: 'Products',
       path: '/products',
-      icon: Package
+      icon: Package,
+      id: 'products'
     },
     {
       label: 'Search',
-      path: '/products',
-      icon: Search
+      path: '/products?search=true',
+      icon: Search,
+      id: 'search'
     },
     {
       label: 'Cart',
       path: '/cart',
       icon: ShoppingCart,
       badge: cartCount > 0 ? cartCount : null,
-      requireAuth: true
+      requireAuth: true,
+      id: 'cart'
     },
     {
       label: 'Account',
       path: user ? '/account' : '/login',
-      icon: User
+      icon: User,
+      id: 'account'
     }
   ];
 
@@ -60,7 +65,10 @@ const BottomNavigation = () => {
     if (path === '/') {
       return location.pathname === '/';
     }
-    return location.pathname.startsWith(path);
+    if (path === '/products?search=true') {
+      return location.pathname === '/products' && location.search.includes('search=true');
+    }
+    return location.pathname.startsWith(path.split('?')[0]);
   };
 
   const shouldShow = (item: any) => {
@@ -78,7 +86,7 @@ const BottomNavigation = () => {
             
             return (
               <Link
-                key={item.path}
+                key={item.id}
                 to={item.path}
                 className={`flex flex-col items-center justify-center min-w-0 flex-1 py-2 px-1 relative transition-colors ${
                   active 

@@ -54,6 +54,12 @@ const Header = () => {
           <Link to="/products" className="text-gray-600 hover:text-gray-900">
             Products
           </Link>
+          <Link to="/categories" className="text-gray-600 hover:text-gray-900">
+            Categories
+          </Link>
+          <Link to="/deals" className="text-gray-600 hover:text-gray-900">
+            Deals
+          </Link>
           {user && (
             <Link to="/cart" className="text-gray-600 hover:text-gray-900 flex items-center">
               <ShoppingCart className="h-5 w-5 mr-1" />

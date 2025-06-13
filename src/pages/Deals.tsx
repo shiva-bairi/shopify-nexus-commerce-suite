@@ -1,43 +1,25 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Heart, ShoppingCart } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Search, Heart, ShoppingCart, Percent } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
-const Products = () => {
-  const [searchParams] = useSearchParams();
+const Deals = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
+  const [sortBy, setSortBy] = useState('discount');
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Handle URL parameters
-  useEffect(() => {
-    const categoryParam = searchParams.get('category');
-    const searchParam = searchParams.get('search');
-    
-    if (categoryParam) {
-      setSelectedCategory(categoryParam);
-    }
-    
-    if (searchParam === 'true') {
-      // Focus on search input when coming from search nav
-      const searchInput = document.querySelector('input[placeholder="Search products..."]') as HTMLInputElement;
-      if (searchInput) {
-        searchInput.focus();
-      }
-    }
-  }, [searchParams]);
-
-  const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ['products', searchQuery, selectedCategory, sortBy],
+  const { data: deals, isLoading } = useQuery({
+    queryKey: ['deals', searchQuery, sortBy],
     queryFn: async () => {
       let query = supabase
         .from('products')
@@ -45,39 +27,25 @@ const Products = () => {
           *,
           categories(name),
           product_images(image_url, is_primary)
-        `);
+        `)
+        .not('discount_price', 'is', null);
 
       if (searchQuery) {
         query = query.ilike('name', `%${searchQuery}%`);
       }
 
-      if (selectedCategory !== 'all') {
-        query = query.eq('category_id', selectedCategory);
-      }
-
-      if (sortBy === 'name') {
-        query = query.order('name');
-      } else if (sortBy === 'price_low') {
-        query = query.order('price', { ascending: true });
-      } else if (sortBy === 'price_high') {
+      if (sortBy === 'discount') {
+        query = query.order('discount_price', { ascending: true });
+      } else if (sortBy === 'savings') {
+        // Order by the difference between price and discount_price
         query = query.order('price', { ascending: false });
+      } else if (sortBy === 'name') {
+        query = query.order('name');
       } else if (sortBy === 'rating') {
         query = query.order('avg_rating', { ascending: false });
       }
 
       const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: categories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('name');
       if (error) throw error;
       return data;
     },
@@ -148,7 +116,11 @@ const Products = () => {
     return primaryImage?.image_url || product.product_images?.[0]?.image_url || '/placeholder.svg';
   };
 
-  if (productsLoading) {
+  const calculateSavings = (originalPrice: number, discountPrice: number) => {
+    return ((originalPrice - discountPrice) / originalPrice * 100).toFixed(0);
+  };
+
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -168,50 +140,39 @@ const Products = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Products</h1>
+      <div className="flex items-center mb-8">
+        <Percent className="h-8 w-8 mr-3 text-red-500" />
+        <h1 className="text-3xl font-bold">Hot Deals & Discounts</h1>
+      </div>
       
       {/* Filters */}
-      <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search products..."
+            placeholder="Search deals..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
         
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories?.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger>
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="discount">Lowest Price</SelectItem>
+            <SelectItem value="savings">Highest Savings</SelectItem>
             <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="price_low">Price: Low to High</SelectItem>
-            <SelectItem value="price_high">Price: High to Low</SelectItem>
             <SelectItem value="rating">Rating</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Products Grid */}
+      {/* Deals Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products?.map((product) => (
+        {deals?.map((product) => (
           <Card key={product.id} className="group hover:shadow-lg transition-shadow">
             <CardHeader className="p-0">
               <div className="relative overflow-hidden rounded-t-lg">
@@ -220,11 +181,9 @@ const Products = () => {
                   alt={product.name}
                   className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                {product.discount_price && (
-                  <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
-                    Sale
-                  </div>
-                )}
+                <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+                  {calculateSavings(product.price, product.discount_price)}% OFF
+                </div>
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     size="sm"
@@ -246,18 +205,12 @@ const Products = () => {
               
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                  {product.discount_price ? (
-                    <>
-                      <span className="text-lg font-bold text-red-600">
-                        ${product.discount_price}
-                      </span>
-                      <span className="text-sm text-gray-500 line-through">
-                        ${product.price}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-lg font-bold">${product.price}</span>
-                  )}
+                  <span className="text-lg font-bold text-red-600">
+                    ${product.discount_price}
+                  </span>
+                  <span className="text-sm text-gray-500 line-through">
+                    ${product.price}
+                  </span>
                 </div>
                 
                 {product.avg_rating > 0 && (
@@ -268,6 +221,12 @@ const Products = () => {
                     </span>
                   </div>
                 )}
+              </div>
+
+              <div className="mb-2">
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Save ${(product.price - product.discount_price).toFixed(2)}
+                </Badge>
               </div>
               
               <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
@@ -287,13 +246,15 @@ const Products = () => {
         ))}
       </div>
 
-      {products?.length === 0 && (
+      {deals?.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No products found.</p>
+          <Percent className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+          <p className="text-gray-500 text-lg">No deals found.</p>
+          <p className="text-gray-400">Check back later for exciting offers!</p>
         </div>
       )}
     </div>
   );
 };
 
-export default Products;
+export default Deals;

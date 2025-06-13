@@ -150,7 +150,7 @@ const Home = () => {
                     </div>
                   </CardContent>
                   <CardFooter className="p-4 pt-0">
-                    <Link to={`/product/${product.id}`} className="w-full">
+                    <Link to={`/products/${product.id}`} className="w-full">
                       <Button className="w-full">View Product</Button>
                     </Link>
                   </CardFooter>
