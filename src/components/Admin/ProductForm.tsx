@@ -14,9 +14,10 @@ import { X, Save, Loader2 } from 'lucide-react';
 interface ProductFormProps {
   product?: any;
   onClose: () => void;
+  onSuccess: () => void;
 }
 
-const ProductForm = ({ product, onClose }: ProductFormProps) => {
+const ProductForm = ({ product, onClose, onSuccess }: ProductFormProps) => {
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
@@ -66,7 +67,7 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
         title: "Success",
         description: "Product created successfully.",
       });
-      onClose();
+      onSuccess();
     },
     onError: (error) => {
       console.error('Create product mutation error:', error);
@@ -115,7 +116,7 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
         title: "Success",
         description: "Product updated successfully.",
       });
-      onClose();
+      onSuccess();
     },
     onError: (error) => {
       console.error('Update product mutation error:', error);
