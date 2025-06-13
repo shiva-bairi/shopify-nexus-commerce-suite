@@ -4,14 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle, Package, Plus, Minus } from 'lucide-react';
 
 const AdminInventory = () => {
-  const [stockUpdates, setStockUpdates] = useState<{ [key: string]: number }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -27,45 +25,37 @@ const AdminInventory = () => {
     }
   });
 
-  const { data: lowStockAlerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ['low-stock-alerts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('inventory_alerts')
-        .select(`
-          *,
-          products (name, stock)
-        `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    }
-  });
-
   const updateStockMutation = useMutation({
-    mutationFn: async ({ productId, newStock, changeType, notes }: {
-      productId: string;
-      newStock: number;
-      changeType: string;
-      notes: string;
-    }) => {
-      const { error } = await supabase
+    mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
+      console.log('Updating inventory stock for product:', productId, 'new stock:', newStock);
+      
+      const { data, error } = await supabase
         .from('products')
-        .update({ stock: newStock })
-        .eq('id', productId);
-      if (error) throw error;
+        .update({ 
+          stock: newStock,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId)
+        .select();
+      
+      if (error) {
+        console.error('Inventory stock update error:', error);
+        throw error;
+      }
+      
+      console.log('Inventory stock updated successfully:', data);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['low-stock-alerts'] });
-      setStockUpdates({});
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast({
         title: "Success",
         description: "Stock updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Inventory update error:', error);
       toast({
         title: "Error",
         description: "Failed to update stock.",
@@ -76,14 +66,11 @@ const AdminInventory = () => {
 
   const handleStockUpdate = (productId: string, currentStock: number, adjustment: number) => {
     const newStock = Math.max(0, currentStock + adjustment);
-    const changeType = adjustment > 0 ? 'increase' : 'decrease';
-    const notes = `Manual adjustment: ${adjustment > 0 ? '+' : ''}${adjustment}`;
+    console.log('Handling inventory stock update:', { productId, currentStock, adjustment, newStock });
     
     updateStockMutation.mutate({
       productId,
-      newStock,
-      changeType,
-      notes
+      newStock
     });
   };
 

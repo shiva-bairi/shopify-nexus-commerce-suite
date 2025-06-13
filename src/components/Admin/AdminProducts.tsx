@@ -85,6 +85,8 @@ const AdminProducts = () => {
 
   const updateStockMutation = useMutation({
     mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
+      console.log('Updating stock for product:', productId, 'new stock:', newStock);
+      
       const { data, error } = await supabase
         .from('products')
         .update({ 
@@ -94,7 +96,12 @@ const AdminProducts = () => {
         .eq('id', productId)
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Stock update error:', error);
+        throw error;
+      }
+      
+      console.log('Stock updated successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -150,6 +157,7 @@ const AdminProducts = () => {
 
   const handleStockChange = (product: Product, change: number) => {
     const newStock = Math.max(0, product.stock + change);
+    console.log('Handling stock change:', { productId: product.id, currentStock: product.stock, change, newStock });
     updateStockMutation.mutate({ 
       productId: product.id, 
       newStock 
