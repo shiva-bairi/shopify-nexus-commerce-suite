@@ -1062,6 +1062,7 @@ export type Database = {
       orders: {
         Row: {
           billing_address_id: string | null
+          carrier: string | null
           coupon_id: string | null
           created_at: string | null
           discount_amount: number | null
@@ -1082,6 +1083,7 @@ export type Database = {
         }
         Insert: {
           billing_address_id?: string | null
+          carrier?: string | null
           coupon_id?: string | null
           created_at?: string | null
           discount_amount?: number | null
@@ -1102,6 +1104,7 @@ export type Database = {
         }
         Update: {
           billing_address_id?: string | null
+          carrier?: string | null
           coupon_id?: string | null
           created_at?: string | null
           discount_amount?: number | null
@@ -1602,6 +1605,54 @@ export type Database = {
           price?: number
         }
         Relationships: []
+      }
+      shipping_rates: {
+        Row: {
+          conditions: Json | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          method_id: string | null
+          price: number
+          updated_at: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          conditions?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          method_id?: string | null
+          price: number
+          updated_at?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          conditions?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          method_id?: string | null
+          price?: number
+          updated_at?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_rates_method_id_fkey"
+            columns: ["method_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_rates_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shipping_zone_methods: {
         Row: {
