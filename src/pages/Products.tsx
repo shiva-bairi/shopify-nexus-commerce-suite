@@ -43,14 +43,27 @@ const Products = () => {
       console.log('🔍 Starting products query with params:', { searchQuery, selectedCategory, sortBy });
       
       try {
+        // Use the same pattern as the working Home page query
         let query = supabase
           .from('products')
           .select(`
-            *,
-            categories(name),
+            id,
+            name,
+            description,
+            price,
+            discount_price,
+            category_id,
+            stock,
+            avg_rating,
+            is_featured,
+            brand,
+            sku,
+            created_at,
+            updated_at,
             product_images(image_url, is_primary)
           `);
 
+        // Apply filters
         if (searchQuery) {
           query = query.ilike('name', `%${searchQuery}%`);
         }
@@ -59,6 +72,7 @@ const Products = () => {
           query = query.eq('category_id', selectedCategory);
         }
 
+        // Apply sorting
         if (sortBy === 'name') {
           query = query.order('name');
         } else if (sortBy === 'price_low') {
