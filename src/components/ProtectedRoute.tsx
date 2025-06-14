@@ -1,64 +1,64 @@
 
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requireAuth?: boolean;
   requireAdmin?: boolean;
 }
 
-const ProtectedRoute = ({ 
-  children, 
-  requireAuth = true, 
-  requireAdmin = false 
-}: ProtectedRouteProps) => {
-  const { user, isAdmin, loading } = useAuth();
-  const navigate = useNavigate();
+const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }: ProtectedRouteProps) => {
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    if (loading) return;
-
-    // If route requires no authentication (like login/signup pages)
-    if (!requireAuth) {
-      // Redirect authenticated users away from auth pages
-      if (user) {
-        navigate('/', { replace: true });
+  // Check admin status if required - use the same method as AdminLayout
+  const { data: isAdmin, isLoading: adminLoading } = useQuery({
+    queryKey: ['admin-check', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return false;
+      
+      try {
+        const { data, error } = await supabase.rpc('is_admin', { user_uuid: user.id });
+        if (error) {
+          console.error('Admin check error:', error);
+          return false;
+        }
+        return data;
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+        return false;
       }
-      return;
-    }
+    },
+    enabled: !!user?.id && requireAdmin
+  });
 
-    // If route requires authentication but user is not logged in
-    if (requireAuth && !user) {
-      navigate('/login', { replace: true });
-      return;
-    }
-
-    // If route requires admin privileges but user is not admin
-    if (requireAdmin && user && !isAdmin) {
-      navigate('/', { replace: true });
-      return;
-    }
-  }, [user, isAdmin, loading, requireAuth, requireAdmin, navigate]);
-
-  // Show loading spinner while checking authentication
-  if (loading) {
+  // Show loading while checking auth or admin status
+  if (loading || (requireAdmin && adminLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading...</span>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
-  // Prevent rendering during redirects
-  if (!requireAuth && user) return null;
-  if (requireAuth && !user) return null;
-  if (requireAdmin && user && !isAdmin) return null;
+  // Redirect to login if auth is required but user is not authenticated
+  if (requireAuth && !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Redirect to home if user is authenticated but shouldn't be (e.g., login page)
+  if (!requireAuth && user) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Check admin access - redirect to admin login if not admin
+  if (requireAdmin && user && !isAdmin) {
+    return <Navigate to="/admin/login" replace />;
+  }
 
   return <>{children}</>;
 };
