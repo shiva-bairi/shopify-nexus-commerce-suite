@@ -41,6 +41,8 @@ import AdminShippingPage from "./pages/admin/AdminShipping";
 import AdminMarketingPage from "./pages/admin/AdminMarketing";
 import AdminFinancePage from "./pages/admin/AdminFinance";
 import AdminSettingsPage from "./pages/admin/AdminSettings";
+import AdminAnalyticsPage from "./pages/admin/AdminAnalytics";
+import AdminSupportPage from "./pages/admin/AdminSupport";
 
 const queryClient = new QueryClient();
 
