@@ -26,7 +26,7 @@ export async function assignRole(user_id: string, role: 'admin' | 'moderator' | 
   // Upsert to handle cases where the user already has this role.
   const { data, error } = await supabase
     .from('user_roles')
-    .upsert([{ user_id, role }], { onConflict: ['user_id', 'role'] });
+    .upsert([{ user_id, role }], { onConflict: 'user_id,role' }); // <-- FIXED: onConflict is a string, not array
   if (error) {
     throw error;
   }
@@ -62,3 +62,4 @@ export async function listUserRoles(user_id: string): Promise<('admin' | 'modera
 
   return (data ?? []).map((row: { role: string }) => row.role as 'admin' | 'moderator' | 'user');
 }
+
