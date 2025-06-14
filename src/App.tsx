@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +27,7 @@ import ShippingPolicy from "./pages/ShippingPolicy";
 import AdminLogin from "./pages/AdminLogin";
 import AdminSignup from "./pages/AdminSignup";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 // Import all admin pages
 import AdminDashboardPage from "./pages/admin/AdminDashboard";
@@ -56,6 +56,9 @@ const App = () => (
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/signup" element={<AdminSignup />} />
           
+          {/* NEW: Public auth route */}
+          <Route path="/auth" element={<Auth />} />
+
           {/* Admin routes with AdminLayout */}
           <Route path="/admin/*" element={
             <ProtectedRoute requireAuth={true} requireAdmin={true}>
