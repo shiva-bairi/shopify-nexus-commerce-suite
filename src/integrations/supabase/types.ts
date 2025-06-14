@@ -253,6 +253,139 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_interactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          interaction_data: Json | null
+          interaction_type: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interaction_data?: Json | null
+          interaction_type: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interaction_data?: Json | null
+          interaction_type?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      customer_loyalty: {
+        Row: {
+          created_at: string
+          id: string
+          lifetime_points: number | null
+          points_balance: number | null
+          program_id: string | null
+          tier_level: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lifetime_points?: number | null
+          points_balance?: number | null
+          program_id?: string | null
+          tier_level?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lifetime_points?: number | null
+          points_balance?: number | null
+          program_id?: string | null
+          tier_level?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_loyalty_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_segment_members: {
+        Row: {
+          added_at: string
+          id: string
+          segment_id: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          segment_id?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          segment_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_segment_members_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_segments: {
+        Row: {
+          created_at: string
+          criteria: Json
+          customer_count: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criteria: Json
+          customer_count?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json
+          customer_count?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_products: {
         Row: {
           created_at: string | null
@@ -416,6 +549,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      loyalty_programs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          points_per_dollar: number | null
+          tier_benefits: Json | null
+          tier_thresholds: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          points_per_dollar?: number | null
+          tier_benefits?: Json | null
+          tier_thresholds?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          points_per_dollar?: number | null
+          tier_benefits?: Json | null
+          tier_thresholds?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1184,6 +1353,10 @@ export type Database = {
       check_low_stock: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_customer_metrics: {
+        Args: { customer_id: string }
+        Returns: Json
       }
       is_admin: {
         Args: { user_uuid?: string }

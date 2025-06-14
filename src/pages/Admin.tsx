@@ -15,6 +15,7 @@ import AdminOrders from '@/components/Admin/AdminOrders';
 import AdminAnalytics from '@/components/Admin/AdminAnalytics';
 import AdminSupport from '@/components/Admin/AdminSupport';
 import AdminDashboard from '@/components/Admin/AdminDashboard';
+import CustomerManagement from '@/components/Admin/CustomerManagement';
 
 const Admin = () => {
   const { user, loading } = useAuth();
@@ -111,6 +112,8 @@ const Admin = () => {
         return <AdminOrders />;
       case 'users':
         return <AdminUsers />;
+      case 'customers':
+        return <CustomerManagement />;
       case 'analytics':
         return <AdminAnalytics />;
       case 'support':
@@ -128,11 +131,12 @@ const Admin = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
