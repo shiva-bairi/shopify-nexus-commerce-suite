@@ -195,6 +195,87 @@ const AdminShipping = () => {
   });
 
   // Handle add/edit zone
+  const createZoneMutation = useMutation({
+    mutationFn: async (zoneData: any) => {
+      const { data, error } = await supabase
+        .from('shipping_zones')
+        .insert(zoneData)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-shipping-zones'] });
+      setShowZoneForm(false);
+      setEditingZone(null);
+      toast({
+        title: "Success",
+        description: "Shipping zone created successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create shipping zone.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateZoneMutation = useMutation({
+    mutationFn: async ({ id, ...zoneData }: any) => {
+      const { data, error } = await supabase
+        .from('shipping_zones')
+        .update(zoneData)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-shipping-zones'] });
+      setShowZoneForm(false);
+      setEditingZone(null);
+      toast({
+        title: "Success",
+        description: "Shipping zone updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update shipping zone.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteZoneMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('shipping_zones')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-shipping-zones'] });
+      toast({
+        title: "Success",
+        description: "Shipping zone deleted successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete shipping zone.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleZoneSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
