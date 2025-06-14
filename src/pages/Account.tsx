@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Package, MapPin, Heart, User, LogOut } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import OrderDetails from '@/components/OrderDetails';
 
 interface Order {
   id: string;
@@ -69,6 +70,7 @@ const Account = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('orders');
   const [editingProfile, setEditingProfile] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
     first_name: '',
     last_name: '',
@@ -263,6 +265,23 @@ const Account = () => {
     }
   };
 
+  const handleOrderClick = (orderId: string) => {
+    setSelectedOrderId(orderId);
+  };
+
+  const handleBackToOrders = () => {
+    setSelectedOrderId(null);
+  };
+
+  // If viewing order details, show OrderDetails component
+  if (selectedOrderId) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <OrderDetails orderId={selectedOrderId} onBack={handleBackToOrders} />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -304,7 +323,11 @@ const Account = () => {
               ) : orders && orders.length > 0 ? (
                 <div className="space-y-4">
                   {orders.map((order) => (
-                    <div key={order.id} className="border rounded-lg p-4">
+                    <div 
+                      key={order.id} 
+                      className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleOrderClick(order.id)}
+                    >
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <h3 className="font-medium">Order #{order.id.slice(0, 8)}</h3>
@@ -337,6 +360,10 @@ const Account = () => {
                             </div>
                           );
                         })}
+                      </div>
+                      
+                      <div className="mt-3 text-sm text-blue-600 font-medium">
+                        Click to view details →
                       </div>
                     </div>
                   ))}
