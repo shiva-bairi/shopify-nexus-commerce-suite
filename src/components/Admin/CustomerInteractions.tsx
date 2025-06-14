@@ -13,6 +13,34 @@ import { Plus, MessageSquare, Phone, Mail, ShoppingCart, HeadphonesIcon, Search 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
+interface InteractionData {
+  subject?: string;
+  outcome?: string;
+  followUp?: boolean;
+}
+
+interface CustomerInteraction {
+  id: string;
+  user_id: string;
+  interaction_type: string;
+  interaction_data: InteractionData | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  profiles?: {
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
+}
+
+interface CreateInteractionData {
+  user_id: string;
+  interaction_type: string;
+  notes: string;
+  interaction_data: InteractionData;
+  created_by?: string;
+}
+
 const CustomerInteractions = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,13 +68,13 @@ const CustomerInteractions = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data as CustomerInteraction[];
     }
   });
 
   // Create interaction mutation
   const createInteractionMutation = useMutation({
-    mutationFn: async (interactionData) => {
+    mutationFn: async (interactionData: CreateInteractionData) => {
       const { data, error } = await supabase
         .from('customer_interactions')
         .insert([{
@@ -66,7 +94,7 @@ const CustomerInteractions = () => {
         description: "Interaction logged successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: `Failed to log interaction: ${error.message}`,
@@ -75,17 +103,17 @@ const CustomerInteractions = () => {
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.target as HTMLFormElement);
     
-    const interactionData = {
-      user_id: formData.get('userId'),
-      interaction_type: formData.get('interactionType'),
-      notes: formData.get('notes'),
+    const interactionData: CreateInteractionData = {
+      user_id: formData.get('userId') as string,
+      interaction_type: formData.get('interactionType') as string,
+      notes: formData.get('notes') as string,
       interaction_data: {
-        subject: formData.get('subject'),
-        outcome: formData.get('outcome'),
+        subject: formData.get('subject') as string,
+        outcome: formData.get('outcome') as string,
         followUp: formData.get('followUp') === 'on'
       }
     };
@@ -93,7 +121,7 @@ const CustomerInteractions = () => {
     createInteractionMutation.mutate(interactionData);
   };
 
-  const getInteractionIcon = (type) => {
+  const getInteractionIcon = (type: string) => {
     switch (type) {
       case 'email': return <Mail className="h-4 w-4" />;
       case 'phone': return <Phone className="h-4 w-4" />;
@@ -104,7 +132,7 @@ const CustomerInteractions = () => {
     }
   };
 
-  const getInteractionColor = (type) => {
+  const getInteractionColor = (type: string) => {
     switch (type) {
       case 'email': return 'bg-blue-100 text-blue-600';
       case 'phone': return 'bg-green-100 text-green-600';

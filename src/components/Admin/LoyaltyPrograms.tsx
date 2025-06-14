@@ -11,9 +11,44 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Award, Edit, Trash2, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+interface TierThresholds {
+  bronze: number;
+  silver: number;
+  gold: number;
+  platinum: number;
+}
+
+interface TierBenefits {
+  bronze: string;
+  silver: string;
+  gold: string;
+  platinum: string;
+}
+
+interface LoyaltyProgram {
+  id: string;
+  name: string;
+  description: string | null;
+  points_per_dollar: number | null;
+  tier_thresholds: TierThresholds | null;
+  tier_benefits: TierBenefits | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CreateProgramData {
+  name: string;
+  description: string;
+  points_per_dollar: number;
+  tier_thresholds: TierThresholds;
+  tier_benefits: TierBenefits;
+  is_active: boolean;
+}
+
 const LoyaltyPrograms = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [selectedProgram, setSelectedProgram] = useState<LoyaltyProgram | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -27,13 +62,13 @@ const LoyaltyPrograms = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data as LoyaltyProgram[];
     }
   });
 
   // Create/Update program mutation
   const programMutation = useMutation({
-    mutationFn: async (programData) => {
+    mutationFn: async (programData: CreateProgramData) => {
       if (selectedProgram) {
         const { data, error } = await supabase
           .from('loyalty_programs')
@@ -62,7 +97,7 @@ const LoyaltyPrograms = () => {
         description: `Program ${selectedProgram ? 'updated' : 'created'} successfully`,
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: `Failed to ${selectedProgram ? 'update' : 'create'} program: ${error.message}`,
@@ -73,7 +108,7 @@ const LoyaltyPrograms = () => {
 
   // Delete program mutation
   const deleteMutation = useMutation({
-    mutationFn: async (programId) => {
+    mutationFn: async (programId: string) => {
       const { error } = await supabase
         .from('loyalty_programs')
         .delete()
@@ -89,35 +124,37 @@ const LoyaltyPrograms = () => {
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.target as HTMLFormElement);
     
-    const tierThresholds = {
+    const tierThresholds: TierThresholds = {
       bronze: 0,
-      silver: parseInt(formData.get('silverThreshold')) || 100,
-      gold: parseInt(formData.get('goldThreshold')) || 500,
-      platinum: parseInt(formData.get('platinumThreshold')) || 1000
+      silver: parseInt((formData.get('silverThreshold') as string)) || 100,
+      gold: parseInt((formData.get('goldThreshold') as string)) || 500,
+      platinum: parseInt((formData.get('platinumThreshold') as string)) || 1000
     };
 
-    const tierBenefits = {
-      bronze: formData.get('bronzeBenefits') || 'Basic rewards',
-      silver: formData.get('silverBenefits') || '5% discount',
-      gold: formData.get('goldBenefits') || '10% discount + free shipping',
-      platinum: formData.get('platinumBenefits') || '15% discount + priority support'
+    const tierBenefits: TierBenefits = {
+      bronze: (formData.get('bronzeBenefits') as string) || 'Basic rewards',
+      silver: (formData.get('silverBenefits') as string) || '5% discount',
+      gold: (formData.get('goldBenefits') as string) || '10% discount + free shipping',
+      platinum: (formData.get('platinumBenefits') as string) || '15% discount + priority support'
     };
 
-    programMutation.mutate({
-      name: formData.get('name'),
-      description: formData.get('description'),
-      points_per_dollar: parseFloat(formData.get('pointsPerDollar')) || 1,
+    const programData: CreateProgramData = {
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      points_per_dollar: parseFloat((formData.get('pointsPerDollar') as string)) || 1,
       tier_thresholds: tierThresholds,
       tier_benefits: tierBenefits,
       is_active: true
-    });
+    };
+
+    programMutation.mutate(programData);
   };
 
-  const openEditDialog = (program) => {
+  const openEditDialog = (program: LoyaltyProgram) => {
     setSelectedProgram(program);
     setIsDialogOpen(true);
   };

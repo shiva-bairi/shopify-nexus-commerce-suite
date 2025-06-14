@@ -12,6 +12,25 @@ import CustomerSegments from './CustomerSegments';
 import LoyaltyPrograms from './LoyaltyPrograms';
 import CustomerInteractions from './CustomerInteractions';
 
+interface CustomerMetrics {
+  total_orders: number;
+  total_spent: number;
+  avg_order_value: number;
+  last_order_date: string | null;
+  support_tickets: number;
+  open_tickets: number;
+  loyalty_points: number;
+  loyalty_tier: string;
+}
+
+interface CustomerWithMetrics {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  created_at: string;
+  metrics: CustomerMetrics;
+}
+
 const CustomerManagement = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +64,7 @@ const CustomerManagement = () => {
             acc.push(order.user_id);
           }
           return acc;
-        }, []).length || 0,
+        }, [] as string[]).length || 0,
         openTickets: tickets?.filter(t => t.status === 'open').length || 0
       };
     }
@@ -69,12 +88,21 @@ const CustomerManagement = () => {
           });
           return {
             ...profile,
-            metrics: metrics || {}
+            metrics: metrics as CustomerMetrics || {
+              total_orders: 0,
+              total_spent: 0,
+              avg_order_value: 0,
+              last_order_date: null,
+              support_tickets: 0,
+              open_tickets: 0,
+              loyalty_points: 0,
+              loyalty_tier: 'bronze'
+            }
           };
         })
       );
 
-      return customersWithData;
+      return customersWithData as CustomerWithMetrics[];
     }
   });
 
@@ -194,14 +222,14 @@ const CustomerManagement = () => {
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <p className="text-sm font-medium">
-                            ${customer.metrics?.total_spent || 0}
+                            ${customer.metrics.total_spent || 0}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {customer.metrics?.total_orders || 0} orders
+                            {customer.metrics.total_orders || 0} orders
                           </p>
                         </div>
-                        <Badge variant={customer.metrics?.loyalty_tier === 'gold' ? 'default' : 'secondary'}>
-                          {customer.metrics?.loyalty_tier || 'bronze'}
+                        <Badge variant={customer.metrics.loyalty_tier === 'gold' ? 'default' : 'secondary'}>
+                          {customer.metrics.loyalty_tier || 'bronze'}
                         </Badge>
                         <Button variant="outline" size="sm">
                           View Details

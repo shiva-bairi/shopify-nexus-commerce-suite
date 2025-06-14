@@ -12,9 +12,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Users, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+interface SegmentCriteria {
+  totalSpent: {
+    min: number | null;
+    max: number | null;
+  };
+  orderCount: {
+    min: number | null;
+    max: number | null;
+  };
+  loyaltyTier: string | null;
+  lastOrderDays: number | null;
+}
+
+interface CustomerSegment {
+  id: string;
+  name: string;
+  description: string | null;
+  criteria: SegmentCriteria;
+  customer_count: number | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CreateSegmentData {
+  name: string;
+  description: string;
+  criteria: SegmentCriteria;
+  is_active: boolean;
+}
+
 const CustomerSegments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedSegment, setSelectedSegment] = useState(null);
+  const [selectedSegment, setSelectedSegment] = useState<CustomerSegment | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -28,13 +59,13 @@ const CustomerSegments = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data as CustomerSegment[];
     }
   });
 
   // Create/Update segment mutation
   const segmentMutation = useMutation({
-    mutationFn: async (segmentData) => {
+    mutationFn: async (segmentData: CreateSegmentData) => {
       if (selectedSegment) {
         const { data, error } = await supabase
           .from('customer_segments')
@@ -63,7 +94,7 @@ const CustomerSegments = () => {
         description: `Segment ${selectedSegment ? 'updated' : 'created'} successfully`,
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: `Failed to ${selectedSegment ? 'update' : 'create'} segment: ${error.message}`,
@@ -74,7 +105,7 @@ const CustomerSegments = () => {
 
   // Delete segment mutation
   const deleteMutation = useMutation({
-    mutationFn: async (segmentId) => {
+    mutationFn: async (segmentId: string) => {
       const { error } = await supabase
         .from('customer_segments')
         .delete()
@@ -90,32 +121,34 @@ const CustomerSegments = () => {
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.target as HTMLFormElement);
     
-    const criteria = {
+    const criteria: SegmentCriteria = {
       totalSpent: {
-        min: formData.get('minSpent') ? parseFloat(formData.get('minSpent')) : null,
-        max: formData.get('maxSpent') ? parseFloat(formData.get('maxSpent')) : null
+        min: formData.get('minSpent') ? parseFloat(formData.get('minSpent') as string) : null,
+        max: formData.get('maxSpent') ? parseFloat(formData.get('maxSpent') as string) : null
       },
       orderCount: {
-        min: formData.get('minOrders') ? parseInt(formData.get('minOrders')) : null,
-        max: formData.get('maxOrders') ? parseInt(formData.get('maxOrders')) : null
+        min: formData.get('minOrders') ? parseInt(formData.get('minOrders') as string) : null,
+        max: formData.get('maxOrders') ? parseInt(formData.get('maxOrders') as string) : null
       },
-      loyaltyTier: formData.get('loyaltyTier') || null,
-      lastOrderDays: formData.get('lastOrderDays') ? parseInt(formData.get('lastOrderDays')) : null
+      loyaltyTier: (formData.get('loyaltyTier') as string) || null,
+      lastOrderDays: formData.get('lastOrderDays') ? parseInt(formData.get('lastOrderDays') as string) : null
     };
 
-    segmentMutation.mutate({
-      name: formData.get('name'),
-      description: formData.get('description'),
+    const segmentData: CreateSegmentData = {
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
       criteria: criteria,
       is_active: true
-    });
+    };
+
+    segmentMutation.mutate(segmentData);
   };
 
-  const openEditDialog = (segment) => {
+  const openEditDialog = (segment: CustomerSegment) => {
     setSelectedSegment(segment);
     setIsDialogOpen(true);
   };
