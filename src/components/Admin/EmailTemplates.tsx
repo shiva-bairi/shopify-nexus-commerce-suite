@@ -22,6 +22,14 @@ interface EmailTemplate {
   created_at: string;
 }
 
+interface TemplateInsertData {
+  name: string;
+  subject: string;
+  html_content: string;
+  template_type: string;
+  is_active: boolean;
+}
+
 const EmailTemplates = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
@@ -45,7 +53,7 @@ const EmailTemplates = () => {
 
   // Create/Update template mutation
   const templateMutation = useMutation({
-    mutationFn: async (templateData: Partial<EmailTemplate>) => {
+    mutationFn: async (templateData: TemplateInsertData) => {
       if (selectedTemplate) {
         const { data, error } = await supabase
           .from('email_templates')
@@ -105,7 +113,7 @@ const EmailTemplates = () => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     
-    const templateData = {
+    const templateData: TemplateInsertData = {
       name: formData.get('name') as string,
       subject: formData.get('subject') as string,
       html_content: formData.get('html_content') as string,

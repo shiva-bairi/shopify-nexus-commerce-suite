@@ -32,6 +32,17 @@ interface EmailTemplate {
   template_type: string;
 }
 
+interface RuleInsertData {
+  name: string;
+  description: string | null;
+  trigger_type: string;
+  trigger_conditions: any;
+  action_type: string;
+  action_config: any;
+  delay_hours: number;
+  is_active: boolean;
+}
+
 const MarketingAutomation = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRule, setSelectedRule] = useState<AutomationRule | null>(null);
@@ -68,7 +79,7 @@ const MarketingAutomation = () => {
 
   // Create/Update rule mutation
   const ruleMutation = useMutation({
-    mutationFn: async (ruleData: Partial<AutomationRule>) => {
+    mutationFn: async (ruleData: RuleInsertData) => {
       if (selectedRule) {
         const { data, error } = await supabase
           .from('automation_rules')
@@ -163,9 +174,9 @@ const MarketingAutomation = () => {
       content: formData.get('content') as string
     };
 
-    const ruleData = {
+    const ruleData: RuleInsertData = {
       name: formData.get('name') as string,
-      description: formData.get('description') as string,
+      description: (formData.get('description') as string) || null,
       trigger_type: triggerType,
       trigger_conditions: triggerConditions,
       action_type: formData.get('action_type') as string,

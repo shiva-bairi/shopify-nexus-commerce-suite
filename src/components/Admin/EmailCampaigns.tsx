@@ -34,6 +34,16 @@ interface CustomerSegment {
   customer_count: number | null;
 }
 
+interface CampaignInsertData {
+  name: string;
+  description: string | null;
+  campaign_type: string;
+  subject: string | null;
+  content: string;
+  target_segment_id: string | null;
+  scheduled_at: string | null;
+}
+
 const EmailCampaigns = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<EmailCampaign | null>(null);
@@ -71,7 +81,7 @@ const EmailCampaigns = () => {
 
   // Create/Update campaign mutation
   const campaignMutation = useMutation({
-    mutationFn: async (campaignData: Partial<EmailCampaign>) => {
+    mutationFn: async (campaignData: CampaignInsertData) => {
       if (selectedCampaign) {
         const { data, error } = await supabase
           .from('marketing_campaigns')
@@ -131,10 +141,11 @@ const EmailCampaigns = () => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     
-    const campaignData = {
+    const campaignData: CampaignInsertData = {
       name: formData.get('name') as string,
-      description: formData.get('description') as string,
-      subject: formData.get('subject') as string,
+      description: (formData.get('description') as string) || null,
+      campaign_type: 'email',
+      subject: (formData.get('subject') as string) || null,
       content: formData.get('content') as string,
       target_segment_id: (formData.get('target_segment_id') as string) || null,
       scheduled_at: formData.get('scheduled_at') ? new Date(formData.get('scheduled_at') as string).toISOString() : null
