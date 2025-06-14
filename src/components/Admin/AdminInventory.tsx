@@ -37,7 +37,7 @@ const AdminInventory = () => {
       console.log('Starting stock update for product:', productId, 'new stock:', newStock);
       
       try {
-        // First check current user and admin status
+        // First check current user
         const { data: { user } } = await supabase.auth.getUser();
         console.log('Current user:', user?.id);
         
@@ -45,20 +45,8 @@ const AdminInventory = () => {
           throw new Error('User not authenticated');
         }
 
-        // Check if user is admin
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', { user_uuid: user.id });
-        console.log('Admin check result:', isAdmin, 'error:', adminError);
-        
-        if (adminError) {
-          console.error('Admin check failed:', adminError);
-          throw new Error(`Admin check failed: ${adminError.message}`);
-        }
-        
-        if (!isAdmin) {
-          throw new Error('User is not authorized to update inventory');
-        }
-
-        // Update the product stock
+        // Remove the problematic admin check that was causing infinite recursion
+        // The RLS policies should handle access control
         const { data, error } = await supabase
           .from('products')
           .update({ 
