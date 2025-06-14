@@ -28,6 +28,8 @@ const Home = () => {
 
   const fetchFeaturedProducts = async () => {
     try {
+      console.log('🏠 Fetching featured products for home page...');
+      
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -38,18 +40,19 @@ const Home = () => {
           discount_price,
           avg_rating,
           is_featured,
-          product_images!inner(image_url, is_primary)
+          product_images(image_url, is_primary)
         `)
         .eq('is_featured', true)
         .limit(6);
 
       if (error) {
-        console.error('Error fetching featured products:', error);
+        console.error('❌ Error fetching featured products:', error);
       } else {
+        console.log('✅ Featured products loaded successfully:', data?.length || 0);
         setFeaturedProducts(data || []);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('💥 Unexpected error:', error);
     } finally {
       setLoading(false);
     }
@@ -107,7 +110,7 @@ const Home = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredProducts.map((product) => {
-              const primaryImage = product.product_images.find(img => img.is_primary) || product.product_images[0];
+              const primaryImage = product.product_images?.find(img => img.is_primary) || product.product_images?.[0];
               
               return (
                 <Card key={product.id} className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
