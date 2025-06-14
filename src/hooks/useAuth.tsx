@@ -9,6 +9,7 @@ interface AuthState {
   loading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  signOut: () => Promise<void>;
 }
 
 export const useAuth = (): AuthState => {
@@ -28,6 +29,17 @@ export const useAuth = (): AuthState => {
     } catch (error) {
       console.error('Admin check failed:', error);
       return false;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+      }
+    } catch (error) {
+      console.error('Sign out failed:', error);
     }
   };
 
@@ -86,6 +98,7 @@ export const useAuth = (): AuthState => {
     session,
     loading,
     isAuthenticated: !!user,
-    isAdmin
+    isAdmin,
+    signOut
   };
 };
