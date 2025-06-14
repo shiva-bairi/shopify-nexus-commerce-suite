@@ -374,7 +374,22 @@ const AdminSettings = () => {
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>
-                              {/* DialogContent is shared above */}
+                              <DialogContent onOpenAutoFocus={e => e.preventDefault()}>
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    {editingTax ? "Edit Tax Rule" : "New Tax Rule"}
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <TaxRuleForm
+                                  initial={editingTax ?? {}}
+                                  loading={addTaxRule.isPending}
+                                  onSubmit={rule => addTaxRule.mutate(rule)}
+                                  onCancel={() => {
+                                    setTaxFormOpen(false);
+                                    setEditingTax(null);
+                                  }}
+                                />
+                              </DialogContent>
                             </Dialog>
                             <Button
                               size="sm"

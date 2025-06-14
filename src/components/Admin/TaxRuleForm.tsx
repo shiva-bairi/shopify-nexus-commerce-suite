@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -77,7 +76,7 @@ const TaxRuleForm = ({ initial = {}, onSubmit, loading, onCancel }: TaxRuleFormP
         <Label htmlFor="is_active">{form.is_active ? 'Active' : 'Inactive'}</Label>
       </div>
       <div className="flex gap-2 mt-2">
-        <Button type="submit" loading={loading}>{form.id ? 'Save Changes' : 'Create Rule'}</Button>
+        <Button type="submit">{form.id ? 'Save Changes' : 'Create Rule'}</Button>
         {onCancel && (
           <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
         )}
