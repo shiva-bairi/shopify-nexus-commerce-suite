@@ -1,4 +1,3 @@
-
 import { ReactNode } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -57,11 +56,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
     { path: '/admin/inventory', label: 'Inventory', icon: Archive },
     { path: '/admin/shipping', label: 'Shipping', icon: Truck },
-    { path: '/admin/users', label: 'Customers', icon: Users },
+    { path: '/admin/users', label: 'Users', icon: Users },
+    { path: '/admin/customers', label: 'Customers', icon: Users },
     { path: '/admin/support', label: 'Support', icon: LifeBuoy },
     { path: '/admin/marketing', label: 'Marketing', icon: Megaphone },
     { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/admin/finance', label: 'Finance', icon: DollarSign },
+    { path: '/admin/coupons', label: 'Coupons', icon: Gift },
     { path: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
