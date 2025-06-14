@@ -1,6 +1,7 @@
 
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProductCard } from '../ProductCard';
 
 const mockProduct = {
