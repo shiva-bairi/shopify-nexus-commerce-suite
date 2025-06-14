@@ -1,6 +1,5 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Import, Export, FileCsv } from "lucide-react";
+import { Import, Export, Files } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,14 +66,14 @@ const ImportExport = () => {
     reader.onload = (evt) => {
       try {
         const csv = evt.target?.result as string;
-        const rows = parseCSV(csv) as ProductRow[];
-        // Only allow rows with id and stock
-        const toPreview = rows
+        const rows = parseCSV(csv);
+        // Only allow rows with id and stock, convert to ProductRow[]
+        const toPreview: ProductRow[] = rows
           .filter((r) => r.id && r.stock !== undefined)
           .map((r) => ({
-            id: r.id,
+            id: String(r.id),
             name: r.name || "",
-            sku: r.sku || "",
+            sku: r.sku ?? "",
             stock: Number(r.stock),
           }));
         setPreviewRows(toPreview);
@@ -122,7 +121,7 @@ const ImportExport = () => {
     <Card className="mb-6 w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FileCsv className="h-5 w-5" />
+          <Files className="h-5 w-5" />
           Import/Export Data <span className="ml-2 text-xs text-muted-foreground">(CSV only)</span>
         </CardTitle>
       </CardHeader>
@@ -196,4 +195,3 @@ const ImportExport = () => {
 };
 
 export default ImportExport;
-
