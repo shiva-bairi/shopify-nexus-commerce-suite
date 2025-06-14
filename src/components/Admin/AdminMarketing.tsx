@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Megaphone, Gift, Mail, MessageSquare, Users, BarChart3, Target, Zap } from 'lucide-react';
+import { Megaphone, Gift, Mail, MessageSquare, Users, BarChart3, Target, Zap, Plus } from 'lucide-react';
 
 const AdminMarketing = () => {
   const [activeTab, setActiveTab] = useState('campaigns');
