@@ -1,6 +1,5 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Import, export as ExportIcon, Files } from "lucide-react";
+import { Import, Export, Files } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,7 +128,7 @@ const ImportExport = () => {
       <CardContent className="flex flex-col md:flex-row flex-wrap gap-3 items-start">
         <div className="flex flex-col gap-2">
           <Button variant="outline" disabled={!!loading} onClick={handleExport}>
-            {loading === "export" ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <ExportIcon className="mr-2 h-4 w-4" />}
+            {loading === "export" ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Export className="mr-2 h-4 w-4" />}
             Export Products CSV
           </Button>
         </div>
