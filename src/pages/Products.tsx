@@ -262,13 +262,6 @@ const Products = () => {
         </Select>
       </div>
 
-      {/* Debug info */}
-      <div className="mb-4 p-4 bg-gray-100 rounded">
-        <p className="text-sm text-gray-600">
-          Debug: Found {products?.length || 0} products, {categories?.length || 0} categories
-        </p>
-      </div>
-
       {/* Products Grid */}
       {products && products.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
