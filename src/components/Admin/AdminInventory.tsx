@@ -45,8 +45,7 @@ const AdminInventory = () => {
           throw new Error('User not authenticated');
         }
 
-        // Remove the problematic admin check that was causing infinite recursion
-        // The RLS policies should handle access control
+        // Update only the specific product with explicit WHERE clause
         const { data, error } = await supabase
           .from('products')
           .update({ 
@@ -54,28 +53,50 @@ const AdminInventory = () => {
             updated_at: new Date().toISOString()
           })
           .eq('id', productId)
-          .select();
+          .select('id, name, stock');
         
         if (error) {
           console.error('Stock update error:', error);
           throw new Error(`Failed to update stock: ${error.message}`);
         }
         
-        console.log('Stock updated successfully:', data);
-        return data;
+        if (!data || data.length === 0) {
+          throw new Error('No product was updated - product not found');
+        }
+        
+        console.log('Stock updated successfully for product:', data[0]);
+        return data[0];
       } catch (error) {
         console.error('Stock update mutation error:', error);
         throw error;
       }
     },
-    onSuccess: () => {
-      console.log('Stock update successful, invalidating queries');
-      queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+    onSuccess: (updatedProduct) => {
+      console.log('Stock update successful for product:', updatedProduct.id);
+      
+      // Update the specific product in the cache instead of invalidating all queries
+      queryClient.setQueryData(['admin-inventory'], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((product: any) => 
+          product.id === updatedProduct.id 
+            ? { ...product, stock: updatedProduct.stock }
+            : product
+        );
+      });
+
+      // Also update the admin-products cache if it exists
+      queryClient.setQueryData(['admin-products'], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((product: any) => 
+          product.id === updatedProduct.id 
+            ? { ...product, stock: updatedProduct.stock }
+            : product
+        );
+      });
+
       toast({
         title: "Success",
-        description: "Stock updated successfully.",
+        description: `Stock updated for ${updatedProduct.name}`,
       });
     },
     onError: (error: Error) => {
@@ -91,6 +112,12 @@ const AdminInventory = () => {
   const handleStockUpdate = (productId: string, currentStock: number, adjustment: number) => {
     const newStock = Math.max(0, currentStock + adjustment);
     console.log('Handling stock update:', { productId, currentStock, adjustment, newStock });
+    
+    // Prevent multiple simultaneous updates
+    if (updateStockMutation.isPending) {
+      console.log('Stock update already in progress, ignoring request');
+      return;
+    }
     
     updateStockMutation.mutate({
       productId,

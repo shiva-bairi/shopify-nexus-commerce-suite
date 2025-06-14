@@ -68,7 +68,7 @@ const AdminProducts = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', productId)
-        .select();
+        .select('id, is_featured');
       
       if (error) {
         console.error('Toggle featured error:', error);
@@ -76,10 +76,19 @@ const AdminProducts = () => {
       }
       
       console.log('Featured status updated:', data);
-      return data;
+      return data[0];
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    onSuccess: (updatedProduct) => {
+      // Update the specific product in cache
+      queryClient.setQueryData(['admin-products', searchQuery], (oldData: Product[]) => {
+        if (!oldData) return oldData;
+        return oldData.map(product => 
+          product.id === updatedProduct.id 
+            ? { ...product, is_featured: updatedProduct.is_featured }
+            : product
+        );
+      });
+      
       toast({
         title: "Success",
         description: "Product featured status updated successfully.",
@@ -104,8 +113,6 @@ const AdminProducts = () => {
         throw new Error('User not authenticated');
       }
 
-      // Remove the admin check that was causing infinite recursion
-      // The RLS policies should handle access control
       const { data, error } = await supabase
         .from('products')
         .update({ 
@@ -113,20 +120,41 @@ const AdminProducts = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', productId)
-        .select();
+        .select('id, stock');
       
       if (error) {
         console.error('Stock update error:', error);
         throw new Error(`Failed to update stock: ${error.message}`);
       }
       
-      console.log('Stock updated successfully:', data);
-      return data;
+      if (!data || data.length === 0) {
+        throw new Error('No product was updated - product not found');
+      }
+      
+      console.log('Stock updated successfully:', data[0]);
+      return data[0];
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+    onSuccess: (updatedProduct) => {
+      // Update the specific product in cache
+      queryClient.setQueryData(['admin-products', searchQuery], (oldData: Product[]) => {
+        if (!oldData) return oldData;
+        return oldData.map(product => 
+          product.id === updatedProduct.id 
+            ? { ...product, stock: updatedProduct.stock }
+            : product
+        );
+      });
+
+      // Also update inventory cache if it exists
+      queryClient.setQueryData(['admin-inventory'], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((product: any) => 
+          product.id === updatedProduct.id 
+            ? { ...product, stock: updatedProduct.stock }
+            : product
+        );
+      });
+      
       toast({
         title: "Success",
         description: "Product stock updated successfully.",
@@ -157,9 +185,16 @@ const AdminProducts = () => {
       if (error) {
         throw new Error(`Failed to delete product: ${error.message}`);
       }
+      
+      return productId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    onSuccess: (deletedProductId) => {
+      // Remove the product from cache
+      queryClient.setQueryData(['admin-products', searchQuery], (oldData: Product[]) => {
+        if (!oldData) return oldData;
+        return oldData.filter(product => product.id !== deletedProductId);
+      });
+      
       toast({
         title: "Success",
         description: "Product deleted successfully.",
@@ -176,6 +211,8 @@ const AdminProducts = () => {
   });
 
   const handleToggleFeatured = (product: Product) => {
+    if (toggleFeaturedMutation.isPending) return;
+    
     toggleFeaturedMutation.mutate({ 
       productId: product.id, 
       isFeatured: product.is_featured 
@@ -185,6 +222,13 @@ const AdminProducts = () => {
   const handleStockChange = (product: Product, change: number) => {
     const newStock = Math.max(0, product.stock + change);
     console.log('Handling stock change:', { productId: product.id, currentStock: product.stock, change, newStock });
+    
+    // Prevent multiple simultaneous updates
+    if (updateStockMutation.isPending) {
+      console.log('Stock update already in progress, ignoring request');
+      return;
+    }
+    
     updateStockMutation.mutate({ 
       productId: product.id, 
       newStock 
