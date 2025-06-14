@@ -2,9 +2,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { ShoppingCart, User, LogOut, Shield } from 'lucide-react';
+import { ShoppingCart, User, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,27 +14,6 @@ import {
 const Header = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-
-  // Check if user is admin
-  const { data: isAdmin } = useQuery({
-    queryKey: ['admin-check', user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      
-      try {
-        const { data, error } = await supabase.rpc('is_admin', { user_uuid: user.id });
-        if (error) {
-          console.error('Admin check error:', error);
-          return false;
-        }
-        return data;
-      } catch (error) {
-        console.error('Failed to check admin status:', error);
-        return false;
-      }
-    },
-    enabled: !!user
-  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -79,6 +56,12 @@ const Header = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
+                  <Link to="/profile" className="flex items-center">
+                    <User className="h-4 w-4 mr-2" />
+                    My Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/account" className="flex items-center">
                     <User className="h-4 w-4 mr-2" />
                     My Account
@@ -90,17 +73,6 @@ const Header = () => {
                     My Cart
                   </Link>
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin/dashboard" className="flex items-center text-blue-600">
-                        <Shield className="h-4 w-4 mr-2" />
-                        Admin Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="flex items-center">
                   <LogOut className="h-4 w-4 mr-2" />
@@ -115,12 +87,6 @@ const Header = () => {
               </Button>
               <Button asChild>
                 <Link to="/signup">Sign Up</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/admin/login" className="flex items-center">
-                  <Shield className="h-4 w-4 mr-1" />
-                  Admin
-                </Link>
               </Button>
             </div>
           )}

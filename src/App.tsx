@@ -20,6 +20,11 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Account from "./pages/Account";
+import Profile from "./pages/Profile";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RefundPolicy from "./pages/RefundPolicy";
+import ShippingPolicy from "./pages/ShippingPolicy";
 import AdminLogin from "./pages/AdminLogin";
 import AdminSignup from "./pages/AdminSignup";
 import NotFound from "./pages/NotFound";
@@ -112,6 +117,14 @@ const App = () => (
                   } 
                 />
                 <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <Profile />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
                   path="/cart" 
                   element={
                     <ProtectedRoute requireAuth={true}>
@@ -141,6 +154,12 @@ const App = () => (
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/deals" element={<Deals />} />
+                
+                {/* Policy pages */}
+                <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/shipping-policy" element={<ShippingPolicy />} />
                 
                 {/* Catch-all route */}
                 <Route path="*" element={<NotFound />} />

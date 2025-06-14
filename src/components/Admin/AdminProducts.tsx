@@ -54,6 +54,13 @@ const AdminProducts = () => {
 
   const toggleFeaturedMutation = useMutation({
     mutationFn: async ({ productId, isFeatured }: { productId: string; isFeatured: boolean }) => {
+      console.log('Toggling featured status for product:', productId, 'current:', isFeatured);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('products')
         .update({ 
@@ -63,7 +70,12 @@ const AdminProducts = () => {
         .eq('id', productId)
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Toggle featured error:', error);
+        throw new Error(`Failed to update featured status: ${error.message}`);
+      }
+      
+      console.log('Featured status updated:', data);
       return data;
     },
     onSuccess: () => {
@@ -73,11 +85,11 @@ const AdminProducts = () => {
         description: "Product featured status updated successfully.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Toggle featured mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to update product featured status.",
+        description: error.message || "Failed to update product featured status.",
         variant: "destructive",
       });
     }
@@ -86,6 +98,17 @@ const AdminProducts = () => {
   const updateStockMutation = useMutation({
     mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
       console.log('Updating stock for product:', productId, 'new stock:', newStock);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Check admin status
+      const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', { user_uuid: user.id });
+      if (adminError || !isAdmin) {
+        throw new Error('Unauthorized: Admin access required');
+      }
       
       const { data, error } = await supabase
         .from('products')
@@ -98,7 +121,7 @@ const AdminProducts = () => {
       
       if (error) {
         console.error('Stock update error:', error);
-        throw error;
+        throw new Error(`Failed to update stock: ${error.message}`);
       }
       
       console.log('Stock updated successfully:', data);
@@ -107,16 +130,17 @@ const AdminProducts = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       toast({
         title: "Success",
         description: "Product stock updated successfully.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Update stock mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to update product stock.",
+        description: error.message || "Failed to update product stock.",
         variant: "destructive",
       });
     }
@@ -124,12 +148,19 @@ const AdminProducts = () => {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', productId);
       
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Failed to delete product: ${error.message}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -138,11 +169,11 @@ const AdminProducts = () => {
         description: "Product deleted successfully.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Delete product mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to delete product.",
+        description: error.message || "Failed to delete product.",
         variant: "destructive",
       });
     }

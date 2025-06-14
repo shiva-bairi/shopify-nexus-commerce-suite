@@ -16,49 +16,85 @@ const AdminInventory = () => {
   const { data: products, isLoading } = useQuery({
     queryKey: ['admin-inventory'],
     queryFn: async () => {
+      console.log('Fetching inventory data...');
       const { data, error } = await supabase
         .from('products')
         .select('id, name, stock, low_stock_threshold, brand, sku')
         .order('stock', { ascending: true });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Error fetching inventory:', error);
+        throw error;
+      }
+      
+      console.log('Inventory data fetched:', data);
       return data;
     }
   });
 
   const updateStockMutation = useMutation({
     mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
-      console.log('Updating inventory stock for product:', productId, 'new stock:', newStock);
+      console.log('Starting stock update for product:', productId, 'new stock:', newStock);
       
-      const { data, error } = await supabase
-        .from('products')
-        .update({ 
-          stock: newStock,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', productId)
-        .select();
-      
-      if (error) {
-        console.error('Inventory stock update error:', error);
+      try {
+        // First check current user and admin status
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Current user:', user?.id);
+        
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        // Check if user is admin
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', { user_uuid: user.id });
+        console.log('Admin check result:', isAdmin, 'error:', adminError);
+        
+        if (adminError) {
+          console.error('Admin check failed:', adminError);
+          throw new Error(`Admin check failed: ${adminError.message}`);
+        }
+        
+        if (!isAdmin) {
+          throw new Error('User is not authorized to update inventory');
+        }
+
+        // Update the product stock
+        const { data, error } = await supabase
+          .from('products')
+          .update({ 
+            stock: newStock,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', productId)
+          .select();
+        
+        if (error) {
+          console.error('Stock update error:', error);
+          throw new Error(`Failed to update stock: ${error.message}`);
+        }
+        
+        console.log('Stock updated successfully:', data);
+        return data;
+      } catch (error) {
+        console.error('Stock update mutation error:', error);
         throw error;
       }
-      
-      console.log('Inventory stock updated successfully:', data);
-      return data;
     },
     onSuccess: () => {
+      console.log('Stock update successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       toast({
         title: "Success",
         description: "Stock updated successfully.",
       });
     },
-    onError: (error) => {
-      console.error('Inventory update error:', error);
+    onError: (error: Error) => {
+      console.error('Stock update failed:', error);
       toast({
         title: "Error",
-        description: "Failed to update stock.",
+        description: error.message || "Failed to update stock.",
         variant: "destructive",
       });
     }
@@ -66,7 +102,7 @@ const AdminInventory = () => {
 
   const handleStockUpdate = (productId: string, currentStock: number, adjustment: number) => {
     const newStock = Math.max(0, currentStock + adjustment);
-    console.log('Handling inventory stock update:', { productId, currentStock, adjustment, newStock });
+    console.log('Handling stock update:', { productId, currentStock, adjustment, newStock });
     
     updateStockMutation.mutate({
       productId,
