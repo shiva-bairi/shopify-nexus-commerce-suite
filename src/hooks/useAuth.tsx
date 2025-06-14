@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,7 +18,7 @@ export const useAuth = (): AuthState => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const checkAdminStatus = async (userId: string) => {
+  const checkAdminStatus = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase.rpc('is_admin', { user_uuid: userId });
       if (error) {
@@ -30,9 +30,9 @@ export const useAuth = (): AuthState => {
       console.error('Admin check failed:', error);
       return false;
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -41,10 +41,42 @@ export const useAuth = (): AuthState => {
     } catch (error) {
       console.error('Sign out failed:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
+
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+          return;
+        }
+        
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          const adminStatus = await checkAdminStatus(session.user.id);
+          if (mounted) {
+            setIsAdmin(adminStatus);
+          }
+        } else {
+          setIsAdmin(false);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to get initial session:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -58,9 +90,16 @@ export const useAuth = (): AuthState => {
         
         // Check admin status when user logs in
         if (session?.user) {
-          const adminStatus = await checkAdminStatus(session.user.id);
-          if (mounted) {
-            setIsAdmin(adminStatus);
+          try {
+            const adminStatus = await checkAdminStatus(session.user.id);
+            if (mounted) {
+              setIsAdmin(adminStatus);
+            }
+          } catch (error) {
+            console.error('Failed to check admin status:', error);
+            if (mounted) {
+              setIsAdmin(false);
+            }
           }
         } else {
           setIsAdmin(false);
@@ -70,28 +109,13 @@ export const useAuth = (): AuthState => {
       }
     );
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const adminStatus = await checkAdminStatus(session.user.id);
-        if (mounted) {
-          setIsAdmin(adminStatus);
-        }
-      }
-      
-      setLoading(false);
-    });
+    getInitialSession();
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [checkAdminStatus]);
 
   return {
     user,

@@ -1,43 +1,20 @@
 
 import { ReactNode } from 'react';
-import { Link, useLocation, Navigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Shield, Home, Package, ShoppingCart, Users, BarChart3, LifeBuoy, Archive, Gift, Settings, CreditCard, Truck, MessageSquare, Megaphone, Brain, DollarSign, FileText, UserCog, Building, Scale } from 'lucide-react';
+import { Loader2, Shield, Home, Package, ShoppingCart, Users, BarChart3, LifeBuoy, Archive, Settings, Truck, Megaphone, DollarSign } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
 
-  // Check if user is admin
-  const { data: isAdmin, isLoading: adminCheckLoading } = useQuery({
-    queryKey: ['admin-check', user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      
-      try {
-        const { data, error } = await supabase.rpc('is_admin', { user_uuid: user.id });
-        if (error) {
-          console.error('Admin check error:', error);
-          return false;
-        }
-        return data;
-      } catch (error) {
-        console.error('Failed to check admin status:', error);
-        return false;
-      }
-    },
-    enabled: !!user
-  });
-
-  if (loading || adminCheckLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -46,9 +23,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     );
   }
 
-  // Redirect to admin login if no user or not admin
+  // Don't render layout if not authenticated or not admin
   if (!user || !isAdmin) {
-    return <Navigate to="/admin/login" replace />;
+    return null;
   }
 
   const navigationItems = [

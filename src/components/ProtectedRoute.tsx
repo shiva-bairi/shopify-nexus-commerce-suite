@@ -25,20 +25,20 @@ const ProtectedRoute = ({
     if (!requireAuth) {
       // Redirect authenticated users away from auth pages
       if (user) {
-        navigate('/');
+        navigate('/', { replace: true });
       }
       return;
     }
 
     // If route requires authentication but user is not logged in
     if (requireAuth && !user) {
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
 
     // If route requires admin privileges but user is not admin
-    if (requireAdmin && !isAdmin) {
-      navigate('/');
+    if (requireAdmin && user && !isAdmin) {
+      navigate('/', { replace: true });
       return;
     }
   }, [user, isAdmin, loading, requireAuth, requireAdmin, navigate]);
@@ -55,10 +55,10 @@ const ProtectedRoute = ({
     );
   }
 
-  // Don't render anything while redirecting
+  // Prevent rendering during redirects
   if (!requireAuth && user) return null;
   if (requireAuth && !user) return null;
-  if (requireAdmin && !isAdmin) return null;
+  if (requireAdmin && user && !isAdmin) return null;
 
   return <>{children}</>;
 };
