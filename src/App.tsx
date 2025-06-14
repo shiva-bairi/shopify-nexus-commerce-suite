@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +25,10 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy";
+import Contact from "./pages/Contact";
+import ShippingInfo from "./pages/ShippingInfo";
+import Returns from "./pages/Returns";
+import Support from "./pages/Support";
 import AdminLogin from "./pages/AdminLogin";
 import AdminSignup from "./pages/AdminSignup";
 import NotFound from "./pages/NotFound";
@@ -130,6 +135,22 @@ const App = () => (
                   } 
                 />
                 <Route 
+                  path="/orders" 
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <Account />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/wishlist" 
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <Account />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
                   path="/cart" 
                   element={
                     <ProtectedRoute requireAuth={true}>
@@ -159,6 +180,12 @@ const App = () => (
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/deals" element={<Deals />} />
+                
+                {/* Support and Information pages */}
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/shipping" element={<ShippingInfo />} />
+                <Route path="/returns" element={<Returns />} />
                 
                 {/* Policy pages */}
                 <Route path="/terms-and-conditions" element={<TermsAndConditions />} />

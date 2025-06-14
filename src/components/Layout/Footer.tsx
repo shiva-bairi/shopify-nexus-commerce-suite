@@ -25,7 +25,7 @@ const Footer = () => {
           <div>
             <h4 className="text-sm font-semibold mb-4 uppercase tracking-wider">Account</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/profile" className="text-gray-400 hover:text-white">My Account</Link></li>
+              <li><Link to="/account" className="text-gray-400 hover:text-white">My Account</Link></li>
               <li><Link to="/orders" className="text-gray-400 hover:text-white">Order History</Link></li>
               <li><Link to="/wishlist" className="text-gray-400 hover:text-white">Wishlist</Link></li>
             </ul>
@@ -35,6 +35,7 @@ const Footer = () => {
             <h4 className="text-sm font-semibold mb-4 uppercase tracking-wider">Support</h4>
             <ul className="space-y-2 text-sm">
               <li><Link to="/contact" className="text-gray-400 hover:text-white">Contact Us</Link></li>
+              <li><Link to="/support" className="text-gray-400 hover:text-white">Support</Link></li>
               <li><Link to="/shipping" className="text-gray-400 hover:text-white">Shipping Info</Link></li>
               <li><Link to="/returns" className="text-gray-400 hover:text-white">Returns</Link></li>
             </ul>
