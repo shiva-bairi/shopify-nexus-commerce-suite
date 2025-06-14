@@ -24,6 +24,6 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    types: ['vitest/globals', '@testing-library/jest-dom'],
+    types: ['vitest/globals'],
   },
 }));
