@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
@@ -7,6 +6,8 @@ import LowStockAlerts from './LowStockAlerts';
 import RecentOrders from './RecentOrders';
 import QuickActions from './QuickActions';
 import SystemStatus from './SystemStatus';
+import BulkOperations from './BulkOperations';
+import ImportExport from './ImportExport';
 
 const AdminDashboard = () => {
   const { data: stats, isLoading } = useQuery({
@@ -81,16 +82,16 @@ const AdminDashboard = () => {
       <DashboardMetrics stats={stats} />
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex flex-col lg:flex-row lg:gap-6 gap-4">
+        <div className="flex-1 flex flex-col gap-4">
+          <QuickActions />
+          <SystemStatus />
+          <BulkOperations />
+          <ImportExport />
+        </div>
         <LowStockAlerts lowStockProducts={stats?.lowStockProducts} />
         <RecentOrders recentOrders={stats?.recentOrders} />
       </div>
-
-      {/* Quick Actions */}
-      <QuickActions />
-
-      {/* System Status */}
-      <SystemStatus />
     </div>
   );
 };
