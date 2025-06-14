@@ -1603,6 +1603,87 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_zone_methods: {
+        Row: {
+          created_at: string | null
+          estimated_days: number | null
+          id: string
+          is_active: boolean | null
+          method_id: string
+          price: number | null
+          updated_at: string | null
+          zone_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          estimated_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          method_id: string
+          price?: number | null
+          updated_at?: string | null
+          zone_id: string
+        }
+        Update: {
+          created_at?: string | null
+          estimated_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          method_id?: string
+          price?: number | null
+          updated_at?: string | null
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_zone_methods_method_id_fkey"
+            columns: ["method_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_zone_methods_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_zones: {
+        Row: {
+          countries: string[]
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          regions: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          countries: string[]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          regions?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          countries?: string[]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          regions?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       site_analytics: {
         Row: {
           avg_session_duration: number | null
