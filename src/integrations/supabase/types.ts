@@ -132,6 +132,127 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_executions: {
+        Row: {
+          created_at: string
+          executed_at: string | null
+          id: string
+          rule_id: string | null
+          status: string
+          trigger_data: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          rule_id?: string | null
+          status?: string
+          trigger_data?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          rule_id?: string | null
+          status?: string
+          trigger_data?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          delay_hours: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          trigger_conditions: Json | null
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config: Json
+          action_type: string
+          created_at?: string
+          delay_hours?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          trigger_conditions?: Json | null
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          delay_hours?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          trigger_conditions?: Json | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string | null
+          clicked_at: string | null
+          created_at: string
+          id: string
+          opened_at: string | null
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           created_at: string | null
@@ -461,6 +582,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          created_at: string
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          template_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_alerts: {
         Row: {
           alert_type: string
@@ -641,6 +795,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      marketing_campaigns: {
+        Row: {
+          campaign_type: string
+          click_count: number | null
+          content: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          open_count: number | null
+          scheduled_at: string | null
+          sent_count: number | null
+          status: string
+          subject: string | null
+          target_segment_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_type: string
+          click_count?: number | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          open_count?: number | null
+          scheduled_at?: string | null
+          sent_count?: number | null
+          status?: string
+          subject?: string | null
+          target_segment_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_type?: string
+          click_count?: number | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          open_count?: number | null
+          scheduled_at?: string | null
+          sent_count?: number | null
+          status?: string
+          subject?: string | null
+          target_segment_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_target_segment_id_fkey"
+            columns: ["target_segment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_segments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1542,6 +1758,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_abandoned_carts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       check_low_stock: {
         Args: Record<PropertyKey, never>
         Returns: undefined
