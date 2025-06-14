@@ -168,8 +168,9 @@ const MarketingAutomation = () => {
     }
 
     // Build action config
+    const templateId = formData.get('template_id') as string;
     const actionConfig = {
-      template_id: (formData.get('template_id') as string) || null,
+      template_id: templateId === 'custom_email' ? null : templateId,
       subject: formData.get('subject') as string,
       content: formData.get('content') as string
     };
@@ -311,12 +312,12 @@ const MarketingAutomation = () => {
               {/* Action configuration */}
               <div>
                 <label className="text-sm font-medium">Email Template (Optional)</label>
-                <Select name="template_id" defaultValue={selectedRule?.action_config?.template_id || ''}>
+                <Select name="template_id" defaultValue={selectedRule?.action_config?.template_id || 'custom_email'}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select template or create custom" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Custom email content</SelectItem>
+                    <SelectItem value="custom_email">Custom email content</SelectItem>
                     {templates?.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
                         {template.name}

@@ -147,7 +147,7 @@ const EmailCampaigns = () => {
       campaign_type: 'email',
       subject: (formData.get('subject') as string) || null,
       content: formData.get('content') as string,
-      target_segment_id: (formData.get('target_segment_id') as string) || null,
+      target_segment_id: (formData.get('target_segment_id') as string) === 'all_customers' ? null : (formData.get('target_segment_id') as string),
       scheduled_at: formData.get('scheduled_at') ? new Date(formData.get('scheduled_at') as string).toISOString() : null
     };
 
@@ -234,12 +234,12 @@ const EmailCampaigns = () => {
 
               <div>
                 <label className="text-sm font-medium">Target Segment</label>
-                <Select name="target_segment_id" defaultValue={selectedCampaign?.target_segment_id || ''}>
+                <Select name="target_segment_id" defaultValue={selectedCampaign?.target_segment_id || 'all_customers'}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select target segment (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All customers</SelectItem>
+                    <SelectItem value="all_customers">All customers</SelectItem>
                     {segments?.map((segment) => (
                       <SelectItem key={segment.id} value={segment.id}>
                         {segment.name} ({segment.customer_count || 0} customers)
