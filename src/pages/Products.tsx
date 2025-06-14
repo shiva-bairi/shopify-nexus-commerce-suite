@@ -40,82 +40,136 @@ const Products = () => {
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['products', searchQuery, selectedCategory, sortBy],
     queryFn: async () => {
-      console.log('Fetching products with params:', { searchQuery, selectedCategory, sortBy });
+      console.log('🔍 Starting products query with params:', { searchQuery, selectedCategory, sortBy });
       
-      let query = supabase
-        .from('products')
-        .select(`
-          *,
-          categories(name),
-          product_images(image_url, is_primary)
-        `);
+      try {
+        let query = supabase
+          .from('products')
+          .select(`
+            *,
+            categories(name),
+            product_images(image_url, is_primary)
+          `);
 
-      if (searchQuery) {
-        query = query.ilike('name', `%${searchQuery}%`);
-      }
+        if (searchQuery) {
+          query = query.ilike('name', `%${searchQuery}%`);
+        }
 
-      if (selectedCategory !== 'all') {
-        query = query.eq('category_id', selectedCategory);
-      }
+        if (selectedCategory !== 'all') {
+          query = query.eq('category_id', selectedCategory);
+        }
 
-      if (sortBy === 'name') {
-        query = query.order('name');
-      } else if (sortBy === 'price_low') {
-        query = query.order('price', { ascending: true });
-      } else if (sortBy === 'price_high') {
-        query = query.order('price', { ascending: false });
-      } else if (sortBy === 'rating') {
-        query = query.order('avg_rating', { ascending: false });
-      }
+        if (sortBy === 'name') {
+          query = query.order('name');
+        } else if (sortBy === 'price_low') {
+          query = query.order('price', { ascending: true });
+        } else if (sortBy === 'price_high') {
+          query = query.order('price', { ascending: false });
+        } else if (sortBy === 'rating') {
+          query = query.order('avg_rating', { ascending: false });
+        }
 
-      const { data, error } = await query;
-      
-      console.log('Products query result:', { data, error });
-      
-      if (error) {
-        console.error('Products fetch error:', error);
-        throw error;
+        console.log('📤 Executing products query...');
+        const { data, error, status, statusText } = await query;
+        
+        console.log('📥 Products query response:', { 
+          data: data?.length ? `${data.length} products` : 'No data', 
+          error, 
+          status, 
+          statusText 
+        });
+        
+        if (error) {
+          console.error('❌ Products fetch error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
+          throw error;
+        }
+        
+        console.log('✅ Products loaded successfully:', data?.length || 0);
+        return data || [];
+      } catch (err) {
+        console.error('💥 Unexpected error in products query:', err);
+        throw err;
       }
-      
-      return data || [];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: categories, error: categoriesError } = useQuery({
+  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      console.log('Fetching categories...');
+      console.log('🏷️ Starting categories query...');
       
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('name');
-      
-      console.log('Categories query result:', { data, error });
-      
-      if (error) {
-        console.error('Categories fetch error:', error);
-        throw error;
+      try {
+        const { data, error, status, statusText } = await supabase
+          .from('categories')
+          .select('id, name')
+          .order('name');
+        
+        console.log('📥 Categories query response:', { 
+          data: data?.length ? `${data.length} categories` : 'No data', 
+          error, 
+          status, 
+          statusText 
+        });
+        
+        if (error) {
+          console.error('❌ Categories fetch error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
+          throw error;
+        }
+        
+        console.log('✅ Categories loaded successfully:', data?.length || 0);
+        return data || [];
+      } catch (err) {
+        console.error('💥 Unexpected error in categories query:', err);
+        throw err;
       }
-      
-      return data || [];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  // Log any errors
+  // Enhanced error logging
   useEffect(() => {
     if (productsError) {
-      console.error('Products error:', productsError);
+      console.error('🚨 Products error state:', productsError);
       toast({
         title: "Error loading products",
-        description: "There was an issue loading the products. Please try again.",
+        description: `Failed to load products: ${productsError.message}`,
         variant: "destructive",
       });
     }
     if (categoriesError) {
-      console.error('Categories error:', categoriesError);
+      console.error('🚨 Categories error state:', categoriesError);
+      toast({
+        title: "Error loading categories", 
+        description: `Failed to load categories: ${categoriesError.message}`,
+        variant: "destructive",
+      });
     }
   }, [productsError, categoriesError, toast]);
+
+  // Log current state
+  useEffect(() => {
+    console.log('📊 Current component state:', { 
+      productsLoading, 
+      categoriesLoading,
+      productsError: productsError?.message,
+      categoriesError: categoriesError?.message,
+      productsCount: products?.length,
+      categoriesCount: categories?.length 
+    });
+  }, [productsLoading, categoriesLoading, productsError, categoriesError, products, categories]);
 
   const addToWishlist = async (productId: string) => {
     if (!user) {
@@ -182,14 +236,7 @@ const Products = () => {
     return primaryImage?.image_url || product.product_images?.[0]?.image_url || '/placeholder.svg';
   };
 
-  console.log('Component state:', { 
-    productsLoading, 
-    productsError, 
-    productsCount: products?.length,
-    categoriesCount: categories?.length 
-  });
-
-  if (productsLoading) {
+  if (productsLoading || categoriesLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Products</h1>
@@ -197,6 +244,10 @@ const Products = () => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
             <p className="text-lg text-gray-600">Loading products...</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Products: {productsLoading ? 'Loading...' : 'Done'} | 
+              Categories: {categoriesLoading ? 'Loading...' : 'Done'}
+            </p>
           </div>
         </div>
       </div>
@@ -210,6 +261,7 @@ const Products = () => {
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <p className="text-lg text-red-600 mb-4">Error loading products</p>
+            <p className="text-sm text-gray-500 mb-4">{productsError.message}</p>
             <Button onClick={() => window.location.reload()}>
               Try Again
             </Button>
@@ -261,6 +313,15 @@ const Products = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Debug info for development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
+          <p className="text-sm text-blue-800">
+            Debug: Found {products?.length || 0} products, {categories?.length || 0} categories
+          </p>
+        </div>
+      )}
 
       {/* Products Grid */}
       {products && products.length > 0 ? (
@@ -346,6 +407,11 @@ const Products = () => {
           <p className="text-sm text-gray-400 mt-2">
             Try adjusting your search criteria or check back later.
           </p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-xs text-blue-600 mt-4">
+              Tip: You may need to add some sample products to the database
+            </p>
+          )}
         </div>
       )}
     </div>
