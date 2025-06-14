@@ -462,7 +462,10 @@ const AdminSupport = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <Dialog>
+          <Dialog
+            open={kbDialogOpen}
+            onOpenChange={setKbDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button
                 size="sm"
@@ -472,7 +475,7 @@ const AdminSupport = () => {
                 }}
               >Add Article</Button>
             </DialogTrigger>
-            <DialogContent open={kbDialogOpen} onOpenChange={setKbDialogOpen}>
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>{kbEdit ? 'Edit Article' : 'Add Knowledge Base Article'}</DialogTitle>
               </DialogHeader>

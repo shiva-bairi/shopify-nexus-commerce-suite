@@ -298,7 +298,10 @@ const AdminSettings = () => {
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Tax Rules
-                <Dialog>
+                <Dialog
+                  open={taxFormOpen}
+                  onOpenChange={setTaxFormOpen}
+                >
                   <DialogTrigger asChild>
                     <Button
                       size="sm"
@@ -311,7 +314,7 @@ const AdminSettings = () => {
                       <Plus className="h-4 w-4" /> New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent onOpenAutoFocus={e => e.preventDefault()} open={taxFormOpen} onOpenChange={setTaxFormOpen}>
+                  <DialogContent onOpenAutoFocus={e => e.preventDefault()}>
                     <DialogHeader>
                       <DialogTitle>
                         {editingTax ? "Edit Tax Rule" : "New Tax Rule"}
