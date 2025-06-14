@@ -1,5 +1,6 @@
-
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,8 +9,61 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Globe, Shield, Bell, Palette, Database, Code, Users } from 'lucide-react';
+import TaxRuleForm from './TaxRuleForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2, FileText, Trash2, Edit2, Plus } from 'lucide-react';
 
 const AdminSettings = () => {
+  // ----------- TAX MANAGEMENT STATE & QUERIES -----------
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [taxFormOpen, setTaxFormOpen] = useState(false);
+  const [editingTax, setEditingTax] = useState<any | null>(null);
+
+  const { data: taxRules, isLoading: taxLoading } = useQuery({
+    queryKey: ['tax-rules'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tax_rules').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addTaxRule = useMutation({
+    mutationFn: async (tax: any) => {
+      if (editingTax) {
+        const { error } = await supabase.from('tax_rules').update(tax).eq('id', editingTax.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('tax_rules').insert({ ...tax });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tax-rules'] });
+      setTaxFormOpen(false);
+      setEditingTax(null);
+      toast({ title: "Success", description: "Tax rule saved." });
+    },
+    onError: e => {
+      toast({ title: "Failed to save", description: (e as Error).message, variant: "destructive" });
+    }
+  });
+
+  const deleteTaxRule = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('tax_rules').update({ is_active: false }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tax-rules'] });
+      toast({ title: "Rule deactivated", description: "The tax rule is now inactive." });
+    }
+  });
+
   return (
     <Tabs defaultValue="general" className="space-y-6">
       <TabsList className="grid w-full grid-cols-4">
@@ -242,28 +296,101 @@ const AdminSettings = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Theme & Branding
+                <FileText className="h-5 w-5" />
+                Tax Rules
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="ml-2"
+                      onClick={() => {
+                        setEditingTax(null);
+                        setTaxFormOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" /> New
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent onOpenAutoFocus={e => e.preventDefault()} open={taxFormOpen} onOpenChange={setTaxFormOpen}>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingTax ? "Edit Tax Rule" : "New Tax Rule"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <TaxRuleForm
+                      initial={editingTax ?? {}}
+                      loading={addTaxRule.isPending}
+                      onSubmit={rule => addTaxRule.mutate(rule)}
+                      onCancel={() => {
+                        setTaxFormOpen(false);
+                        setEditingTax(null);
+                      }}
+                    />
+                  </DialogContent>
+                </Dialog>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="primary-color">Primary Color</Label>
-                <Input id="primary-color" type="color" defaultValue="#3b82f6" />
-              </div>
-              <div>
-                <Label htmlFor="secondary-color">Secondary Color</Label>
-                <Input id="secondary-color" type="color" defaultValue="#6b7280" />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch id="dark-mode" />
-                <Label htmlFor="dark-mode">Enable Dark Mode</Label>
-              </div>
-              <div>
-                <Label htmlFor="logo-upload">Upload Logo</Label>
-                <Input id="logo-upload" type="file" accept="image/*" />
-              </div>
-              <Button>Update Branding</Button>
+            <CardContent>
+              {taxLoading ? (
+                <div className="flex items-center p-4"><Loader2 className="animate-spin mr-2" /> Loading tax rules...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Country</TableHead>
+                      <TableHead>Region</TableHead>
+                      <TableHead>Rate (%)</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {taxRules?.map((tax: any) => (
+                      <TableRow key={tax.id} className={tax.is_active ? '' : "opacity-60"}>
+                        <TableCell>{tax.name}</TableCell>
+                        <TableCell>{tax.tax_type}</TableCell>
+                        <TableCell>{tax.country}</TableCell>
+                        <TableCell>{tax.region ?? '-'}</TableCell>
+                        <TableCell>{tax.rate}</TableCell>
+                        <TableCell>
+                          <Badge variant={tax.is_active ? "default" : "outline"}>
+                            {tax.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingTax(tax);
+                                    setTaxFormOpen(true);
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              {/* DialogContent is shared above */}
+                            </Dialog>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteTaxRule.mutate(tax.id)}
+                              disabled={!tax.is_active}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -760,6 +760,42 @@ export type Database = {
           },
         ]
       }
+      knowledge_base_articles: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_faq: boolean | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_faq?: boolean | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_faq?: boolean | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       loyalty_programs: {
         Row: {
           created_at: string
@@ -1855,6 +1891,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tax_rules: {
+        Row: {
+          country: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          rate: number
+          region: string | null
+          tax_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          country: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          rate: number
+          region?: string | null
+          tax_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          country?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          rate?: number
+          region?: string | null
+          tax_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
