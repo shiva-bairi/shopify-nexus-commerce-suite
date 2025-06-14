@@ -1,0 +1,305 @@
+
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { FileText, Plus, Download } from 'lucide-react';
+
+interface InvoiceManagementProps {
+  orderId: string;
+  orderTotal: number;
+  invoices: Array<{
+    id: string;
+    invoice_number: string;
+    invoice_date: string;
+    due_date: string | null;
+    subtotal: number;
+    tax_amount: number | null;
+    discount_amount: number | null;
+    total_amount: number;
+    status: string;
+    notes: string | null;
+    created_at: string;
+  }>;
+}
+
+const InvoiceManagement = ({ orderId, orderTotal, invoices }: InvoiceManagementProps) => {
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [subtotal, setSubtotal] = useState(orderTotal.toString());
+  const [taxAmount, setTaxAmount] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const createInvoiceMutation = useMutation({
+    mutationFn: async (invoiceData: any) => {
+      const calculatedTotal = parseFloat(invoiceData.subtotal) + 
+                             (parseFloat(invoiceData.taxAmount) || 0) - 
+                             (parseFloat(invoiceData.discountAmount) || 0);
+      
+      const { error } = await supabase
+        .from('invoices')
+        .insert({
+          order_id: orderId,
+          subtotal: parseFloat(invoiceData.subtotal),
+          tax_amount: invoiceData.taxAmount ? parseFloat(invoiceData.taxAmount) : null,
+          discount_amount: invoiceData.discountAmount ? parseFloat(invoiceData.discountAmount) : null,
+          total_amount: calculatedTotal,
+          due_date: invoiceData.dueDate || null,
+          notes: invoiceData.notes || null,
+          status: 'draft'
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      setSubtotal(orderTotal.toString());
+      setTaxAmount('');
+      setDiscountAmount('');
+      setDueDate('');
+      setNotes('');
+      setShowCreateForm(false);
+      toast({
+        title: "Success",
+        description: "Invoice created successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create invoice.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateInvoiceStatusMutation = useMutation({
+    mutationFn: async ({ invoiceId, status }: { invoiceId: string; status: string }) => {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast({
+        title: "Success",
+        description: "Invoice status updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update invoice status.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleCreateInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subtotal || parseFloat(subtotal) <= 0) return;
+    createInvoiceMutation.mutate({
+      subtotal,
+      taxAmount,
+      discountAmount,
+      dueDate,
+      notes
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      draft: { variant: 'secondary' as const, label: 'Draft' },
+      sent: { variant: 'default' as const, label: 'Sent' },
+      paid: { variant: 'outline' as const, label: 'Paid' },
+      overdue: { variant: 'destructive' as const, label: 'Overdue' },
+      cancelled: { variant: 'destructive' as const, label: 'Cancelled' }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const calculateTotal = () => {
+    const sub = parseFloat(subtotal) || 0;
+    const tax = parseFloat(taxAmount) || 0;
+    const discount = parseFloat(discountAmount) || 0;
+    return (sub + tax - discount).toFixed(2);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium">Invoices</h4>
+        <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invoice
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Invoice</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateInvoice} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Subtotal</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={subtotal}
+                  onChange={(e) => setSubtotal(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Tax Amount</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={taxAmount}
+                  onChange={(e) => setTaxAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Discount Amount</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Due Date</label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Notes</label>
+                <Input
+                  placeholder="Invoice notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+              <div className="p-3 bg-gray-50 rounded">
+                <div className="flex justify-between">
+                  <span className="font-medium">Total Amount:</span>
+                  <span className="font-bold">${calculateTotal()}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit">
+                  Create Invoice
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowCreateForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="space-y-3">
+        {invoices.map((invoice) => (
+          <div key={invoice.id} className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <FileText className="h-4 w-4" />
+                <span className="font-mono text-sm">{invoice.invoice_number}</span>
+                {getStatusBadge(invoice.status)}
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="font-medium">${invoice.total_amount.toFixed(2)}</span>
+                <Button size="sm" variant="outline">
+                  <Download className="h-4 w-4 mr-1" />
+                  PDF
+                </Button>
+                <Select
+                  value={invoice.status}
+                  onValueChange={(status) => updateInvoiceStatusMutation.mutate({ 
+                    invoiceId: invoice.id, 
+                    status 
+                  })}
+                >
+                  <SelectTrigger className="w-[120px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="text-sm space-y-1">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>${invoice.subtotal.toFixed(2)}</span>
+              </div>
+              {invoice.tax_amount && (
+                <div className="flex justify-between">
+                  <span>Tax:</span>
+                  <span>${invoice.tax_amount.toFixed(2)}</span>
+                </div>
+              )}
+              {invoice.discount_amount && (
+                <div className="flex justify-between">
+                  <span>Discount:</span>
+                  <span>-${invoice.discount_amount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-medium border-t pt-1">
+                <span>Total:</span>
+                <span>${invoice.total_amount.toFixed(2)}</span>
+              </div>
+              <div className="text-gray-500 pt-2">
+                <div>Invoice Date: {new Date(invoice.invoice_date).toLocaleDateString()}</div>
+                {invoice.due_date && (
+                  <div>Due Date: {new Date(invoice.due_date).toLocaleDateString()}</div>
+                )}
+              </div>
+              {invoice.notes && (
+                <div className="text-gray-600 italic">{invoice.notes}</div>
+              )}
+            </div>
+          </div>
+        ))}
+        {invoices.length === 0 && (
+          <div className="text-center py-4 text-gray-500">
+            No invoices for this order
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default InvoiceManagement;

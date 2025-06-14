@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Search, Eye, CreditCard, Clock, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import OrderTimeline from './OrderTimeline';
+import ReturnManagement from './ReturnManagement';
+import InvoiceManagement from './InvoiceManagement';
 
 interface Order {
   id: string;
@@ -22,6 +25,7 @@ interface Order {
   user_id: string;
   tracking_number: string | null;
   order_items: Array<{
+    id: string;
     quantity: number;
     price_at_purchase: number;
     products: {
@@ -38,6 +42,37 @@ interface Order {
   }>;
   order_status_history: Array<{
     id: string;
+    status: string;
+    notes: string | null;
+    created_at: string;
+  }>;
+  order_timeline: Array<{
+    id: string;
+    status: string;
+    description: string | null;
+    created_at: string;
+    created_by: string | null;
+    metadata: any;
+  }>;
+  order_returns: Array<{
+    id: string;
+    return_number: string;
+    reason: string;
+    description: string | null;
+    status: string;
+    return_type: string;
+    refund_amount: number | null;
+    created_at: string;
+  }>;
+  invoices: Array<{
+    id: string;
+    invoice_number: string;
+    invoice_date: string;
+    due_date: string | null;
+    subtotal: number;
+    tax_amount: number | null;
+    discount_amount: number | null;
+    total_amount: number;
     status: string;
     notes: string | null;
     created_at: string;
@@ -59,6 +94,7 @@ const AdminOrders = () => {
         .select(`
           *,
           order_items(
+            id,
             quantity,
             price_at_purchase,
             products(name)
@@ -73,6 +109,37 @@ const AdminOrders = () => {
           ),
           order_status_history(
             id,
+            status,
+            notes,
+            created_at
+          ),
+          order_timeline(
+            id,
+            status,
+            description,
+            created_at,
+            created_by,
+            metadata
+          ),
+          order_returns(
+            id,
+            return_number,
+            reason,
+            description,
+            status,
+            return_type,
+            refund_amount,
+            created_at
+          ),
+          invoices(
+            id,
+            invoice_number,
+            invoice_date,
+            due_date,
+            subtotal,
+            tax_amount,
+            discount_amount,
+            total_amount,
             status,
             notes,
             created_at
@@ -201,7 +268,7 @@ const AdminOrders = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Enhanced Order Management</CardTitle>
+        <CardTitle>Advanced Order Management</CardTitle>
         <div className="flex items-center space-x-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -310,55 +377,85 @@ const AdminOrders = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-4xl">
+                      <DialogContent className="max-w-6xl">
                         <DialogHeader>
-                          <DialogTitle>Order Details - #{order.id.slice(0, 8)}</DialogTitle>
+                          <DialogTitle>Order Management - #{order.id.slice(0, 8)}</DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-2 gap-6">
-                            <div>
-                              <h3 className="font-medium mb-2">Payment History</h3>
-                              <div className="space-y-2">
-                                {order.payment_transactions.map((transaction) => (
-                                  <div key={transaction.id} className="p-3 border rounded">
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-medium">{transaction.payment_method}</span>
-                                      <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
-                                        {transaction.status}
-                                      </Badge>
-                                    </div>
-                                    <div className="text-sm text-gray-600">
-                                      Amount: ${transaction.amount.toFixed(2)}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {new Date(transaction.created_at).toLocaleString()}
-                                    </div>
+                        <Tabs defaultValue="timeline" className="space-y-4">
+                          <TabsList className="grid w-full grid-cols-5">
+                            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                            <TabsTrigger value="payment">Payment</TabsTrigger>
+                            <TabsTrigger value="status">Status</TabsTrigger>
+                            <TabsTrigger value="returns">Returns</TabsTrigger>
+                            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                          </TabsList>
+                          
+                          <TabsContent value="timeline" className="space-y-4">
+                            <OrderTimeline 
+                              orderId={order.id} 
+                              timeline={order.order_timeline || []} 
+                            />
+                          </TabsContent>
+                          
+                          <TabsContent value="payment" className="space-y-4">
+                            <h4 className="font-medium">Payment History</h4>
+                            <div className="space-y-2">
+                              {order.payment_transactions.map((transaction) => (
+                                <div key={transaction.id} className="p-3 border rounded">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium">{transaction.payment_method}</span>
+                                    <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
+                                      {transaction.status}
+                                    </Badge>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <h3 className="font-medium mb-2">Status History</h3>
-                              <div className="space-y-2">
-                                {order.order_status_history.map((history) => (
-                                  <div key={history.id} className="p-3 border rounded">
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-medium">{history.status}</span>
-                                      <span className="text-xs text-gray-500">
-                                        {new Date(history.created_at).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    {history.notes && (
-                                      <div className="text-sm text-gray-600 mt-1">
-                                        {history.notes}
-                                      </div>
-                                    )}
+                                  <div className="text-sm text-gray-600">
+                                    Amount: ${transaction.amount.toFixed(2)}
                                   </div>
-                                ))}
-                              </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(transaction.created_at).toLocaleString()}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        </div>
+                          </TabsContent>
+
+                          <TabsContent value="status" className="space-y-4">
+                            <h4 className="font-medium">Status History</h4>
+                            <div className="space-y-2">
+                              {order.order_status_history.map((history) => (
+                                <div key={history.id} className="p-3 border rounded">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium">{history.status}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(history.created_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  {history.notes && (
+                                    <div className="text-sm text-gray-600 mt-1">
+                                      {history.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="returns" className="space-y-4">
+                            <ReturnManagement 
+                              orderId={order.id}
+                              orderItems={order.order_items}
+                              returns={order.order_returns || []}
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="invoices" className="space-y-4">
+                            <InvoiceManagement 
+                              orderId={order.id}
+                              orderTotal={order.total_amount}
+                              invoices={order.invoices || []}
+                            />
+                          </TabsContent>
+                        </Tabs>
                       </DialogContent>
                     </Dialog>
                     <Select

@@ -1,0 +1,271 @@
+
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { RotateCcw, Plus, DollarSign } from 'lucide-react';
+
+interface ReturnManagementProps {
+  orderId: string;
+  orderItems: Array<{
+    id: string;
+    quantity: number;
+    price_at_purchase: number;
+    products: {
+      name: string;
+    };
+  }>;
+  returns: Array<{
+    id: string;
+    return_number: string;
+    reason: string;
+    description: string | null;
+    status: string;
+    return_type: string;
+    refund_amount: number | null;
+    created_at: string;
+  }>;
+}
+
+const ReturnManagement = ({ orderId, orderItems, returns }: ReturnManagementProps) => {
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [reason, setReason] = useState('');
+  const [description, setDescription] = useState('');
+  const [returnType, setReturnType] = useState('refund');
+  const [refundAmount, setRefundAmount] = useState('');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const createReturnMutation = useMutation({
+    mutationFn: async (returnData: any) => {
+      const { error } = await supabase
+        .from('order_returns')
+        .insert({
+          order_id: orderId,
+          reason: returnData.reason,
+          description: returnData.description,
+          return_type: returnData.returnType,
+          refund_amount: returnData.refundAmount ? parseFloat(returnData.refundAmount) : null,
+          status: 'requested'
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      setReason('');
+      setDescription('');
+      setReturnType('refund');
+      setRefundAmount('');
+      setShowCreateForm(false);
+      toast({
+        title: "Success",
+        description: "Return request created successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create return request.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateReturnStatusMutation = useMutation({
+    mutationFn: async ({ returnId, status }: { returnId: string; status: string }) => {
+      const { error } = await supabase
+        .from('order_returns')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString(),
+          ...(status === 'approved' ? { approved_by: (await supabase.auth.getUser()).data.user?.id } : {}),
+          ...(status === 'processed' ? { processed_by: (await supabase.auth.getUser()).data.user?.id } : {})
+        })
+        .eq('id', returnId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast({
+        title: "Success",
+        description: "Return status updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update return status.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleCreateReturn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) return;
+    createReturnMutation.mutate({
+      reason,
+      description,
+      returnType,
+      refundAmount
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      requested: { variant: 'secondary' as const, label: 'Requested' },
+      approved: { variant: 'default' as const, label: 'Approved' },
+      rejected: { variant: 'destructive' as const, label: 'Rejected' },
+      processed: { variant: 'outline' as const, label: 'Processed' }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.requested;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium">Returns & Refunds</h4>
+        <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Return
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Return Request</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateReturn} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Reason</label>
+                <Select value={reason} onValueChange={setReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="defective">Defective Item</SelectItem>
+                    <SelectItem value="damaged">Damaged in Transit</SelectItem>
+                    <SelectItem value="wrong_item">Wrong Item Sent</SelectItem>
+                    <SelectItem value="customer_request">Customer Request</SelectItem>
+                    <SelectItem value="quality_issue">Quality Issue</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  placeholder="Additional details..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Return Type</label>
+                <Select value={returnType} onValueChange={setReturnType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="refund">Refund</SelectItem>
+                    <SelectItem value="exchange">Exchange</SelectItem>
+                    <SelectItem value="store_credit">Store Credit</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {returnType === 'refund' && (
+                <div>
+                  <label className="text-sm font-medium">Refund Amount</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" disabled={!reason.trim()}>
+                  Create Return
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowCreateForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="space-y-3">
+        {returns.map((returnItem) => (
+          <div key={returnItem.id} className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <RotateCcw className="h-4 w-4" />
+                <span className="font-mono text-sm">{returnItem.return_number}</span>
+                {getStatusBadge(returnItem.status)}
+              </div>
+              <div className="flex items-center space-x-2">
+                {returnItem.refund_amount && (
+                  <div className="flex items-center space-x-1">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="text-sm">${returnItem.refund_amount.toFixed(2)}</span>
+                  </div>
+                )}
+                <Select
+                  value={returnItem.status}
+                  onValueChange={(status) => updateReturnStatusMutation.mutate({ 
+                    returnId: returnItem.id, 
+                    status 
+                  })}
+                >
+                  <SelectTrigger className="w-[120px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="requested">Requested</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="processed">Processed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="text-sm space-y-1">
+              <div><strong>Reason:</strong> {returnItem.reason.replace('_', ' ')}</div>
+              <div><strong>Type:</strong> {returnItem.return_type.replace('_', ' ')}</div>
+              {returnItem.description && (
+                <div><strong>Description:</strong> {returnItem.description}</div>
+              )}
+              <div className="text-gray-500">
+                Created: {new Date(returnItem.created_at).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        ))}
+        {returns.length === 0 && (
+          <div className="text-center py-4 text-gray-500">
+            No returns for this order
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ReturnManagement;
