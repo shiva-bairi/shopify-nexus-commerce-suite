@@ -3,36 +3,89 @@ import { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useAuth = () => {
+interface AuthState {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+}
+
+export const useAuth = (): AuthState => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const checkAdminStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('is_admin', { user_uuid: userId });
+      if (error) {
+        console.error('Error checking admin status:', error);
+        return false;
+      }
+      return data || false;
+    } catch (error) {
+      console.error('Admin check failed:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
+        
+        if (!mounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Check admin status when user logs in
+        if (session?.user) {
+          const adminStatus = await checkAdminStatus(session.user.id);
+          if (mounted) {
+            setIsAdmin(adminStatus);
+          }
+        } else {
+          setIsAdmin(false);
+        }
+        
         setLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.id);
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const adminStatus = await checkAdminStatus(session.user.id);
+        if (mounted) {
+          setIsAdmin(adminStatus);
+        }
+      }
+      
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  return {
+    user,
+    session,
+    loading,
+    isAuthenticated: !!user,
+    isAdmin
   };
-
-  return { user, session, loading, signOut };
 };

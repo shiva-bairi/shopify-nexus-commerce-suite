@@ -8,11 +8,20 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Search, Plus, Edit, Trash2, Package, Star, StarOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Search, Plus, Edit, Trash2, Package, Star, StarOff, Image } from 'lucide-react';
 import ProductForm from './ProductForm';
 import AdminInventory from './AdminInventory';
 import AdminCoupons from './AdminCoupons';
+import ProductStockManager from './ProductStockManager';
+import ProductImageManager from './ProductImageManager';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface Product {
   id: string;
@@ -26,12 +35,14 @@ interface Product {
   description?: string;
   category_id?: string;
   sku?: string;
+  low_stock_threshold: number;
 }
 
 const AdminProducts = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedProductForImages, setSelectedProductForImages] = useState<Product | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -43,7 +54,7 @@ const AdminProducts = () => {
         .select('*');
 
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`);
+        query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -56,11 +67,6 @@ const AdminProducts = () => {
     mutationFn: async ({ productId, isFeatured }: { productId: string; isFeatured: boolean }) => {
       console.log('Toggling featured status for product:', productId, 'current:', isFeatured);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
       const { data, error } = await supabase
         .from('products')
         .update({ 
@@ -68,7 +74,8 @@ const AdminProducts = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', productId)
-        .select('id, is_featured');
+        .select('id, is_featured')
+        .single();
       
       if (error) {
         console.error('Toggle featured error:', error);
@@ -76,10 +83,9 @@ const AdminProducts = () => {
       }
       
       console.log('Featured status updated:', data);
-      return data[0];
+      return data;
     },
     onSuccess: (updatedProduct) => {
-      // Update the specific product in cache
       queryClient.setQueryData(['admin-products', searchQuery], (oldData: Product[]) => {
         if (!oldData) return oldData;
         return oldData.map(product => 
@@ -104,79 +110,27 @@ const AdminProducts = () => {
     }
   });
 
-  const updateStockMutation = useMutation({
-    mutationFn: async ({ productId, newStock }: { productId: string; newStock: number }) => {
-      console.log('Updating stock for product:', productId, 'new stock:', newStock);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data, error } = await supabase
-        .from('products')
-        .update({ 
-          stock: newStock,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', productId)
-        .select('id, stock');
-      
-      if (error) {
-        console.error('Stock update error:', error);
-        throw new Error(`Failed to update stock: ${error.message}`);
-      }
-      
-      if (!data || data.length === 0) {
-        throw new Error('No product was updated - product not found');
-      }
-      
-      console.log('Stock updated successfully:', data[0]);
-      return data[0];
-    },
-    onSuccess: (updatedProduct) => {
-      // Update the specific product in cache
-      queryClient.setQueryData(['admin-products', searchQuery], (oldData: Product[]) => {
-        if (!oldData) return oldData;
-        return oldData.map(product => 
-          product.id === updatedProduct.id 
-            ? { ...product, stock: updatedProduct.stock }
-            : product
-        );
-      });
-
-      // Also update inventory cache if it exists
-      queryClient.setQueryData(['admin-inventory'], (oldData: any) => {
-        if (!oldData) return oldData;
-        return oldData.map((product: any) => 
-          product.id === updatedProduct.id 
-            ? { ...product, stock: updatedProduct.stock }
-            : product
-        );
-      });
-      
-      toast({
-        title: "Success",
-        description: "Product stock updated successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      console.error('Update stock mutation error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update product stock.",
-        variant: "destructive",
-      });
-    }
-  });
-
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
+      // Delete associated images first
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('image_url')
+        .eq('product_id', productId);
+      
+      if (images && images.length > 0) {
+        // Delete images from storage
+        const filePaths = images.map(img => {
+          const urlParts = img.image_url.split('/');
+          return urlParts.slice(-2).join('/');
+        });
+        
+        await supabase.storage
+          .from('product-images')
+          .remove(filePaths);
       }
-
+      
+      // Delete product (cascade will handle related records)
       const { error } = await supabase
         .from('products')
         .delete()
@@ -189,11 +143,13 @@ const AdminProducts = () => {
       return productId;
     },
     onSuccess: (deletedProductId) => {
-      // Remove the product from cache
       queryClient.setQueryData(['admin-products', searchQuery], (oldData: Product[]) => {
         if (!oldData) return oldData;
         return oldData.filter(product => product.id !== deletedProductId);
       });
+      
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
       
       toast({
         title: "Success",
@@ -219,29 +175,13 @@ const AdminProducts = () => {
     });
   };
 
-  const handleStockChange = (product: Product, change: number) => {
-    const newStock = Math.max(0, product.stock + change);
-    console.log('Handling stock change:', { productId: product.id, currentStock: product.stock, change, newStock });
-    
-    // Prevent multiple simultaneous updates
-    if (updateStockMutation.isPending) {
-      console.log('Stock update already in progress, ignoring request');
-      return;
-    }
-    
-    updateStockMutation.mutate({ 
-      productId: product.id, 
-      newStock 
-    });
-  };
-
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setShowProductForm(true);
   };
 
   const handleDelete = (productId: string) => {
-    if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to delete this product? This will also delete all associated images and cannot be undone.')) {
       deleteProductMutation.mutate(productId);
     }
   };
@@ -253,6 +193,7 @@ const AdminProducts = () => {
 
   const handleFormSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
     handleCloseForm();
   };
 
@@ -294,7 +235,7 @@ const AdminProducts = () => {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search products..."
+                  placeholder="Search products, brands, SKUs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -311,8 +252,8 @@ const AdminProducts = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Brand</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Brand/SKU</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Stock</TableHead>
                     <TableHead>Status</TableHead>
@@ -322,8 +263,24 @@ const AdminProducts = () => {
                 <TableBody>
                   {products?.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{product.brand || 'No brand'}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{product.name}</div>
+                          {product.description && (
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {product.description}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div>{product.brand || 'No brand'}</div>
+                          {product.sku && (
+                            <div className="text-sm text-gray-500">SKU: {product.sku}</div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div>
                           <span className="font-medium">${Number(product.price).toFixed(2)}</span>
@@ -335,34 +292,17 @@ const AdminProducts = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={product.stock > 10 ? 'secondary' : product.stock > 0 ? 'outline' : 'destructive'}>
-                            {product.stock} in stock
-                          </Badge>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleStockChange(product, -1)}
-                              disabled={product.stock === 0 || updateStockMutation.isPending}
-                            >
-                              -
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleStockChange(product, 1)}
-                              disabled={updateStockMutation.isPending}
-                            >
-                              +
-                            </Button>
-                          </div>
-                        </div>
+                        <ProductStockManager product={product} />
                       </TableCell>
                       <TableCell>
-                        <Badge variant={product.is_featured ? 'default' : 'secondary'}>
-                          {product.is_featured ? 'Featured' : 'Regular'}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={product.is_featured ? 'default' : 'secondary'}>
+                            {product.is_featured ? 'Featured' : 'Regular'}
+                          </Badge>
+                          {new Date(product.created_at).toLocaleDateString() === new Date().toLocaleDateString() && (
+                            <Badge variant="outline" className="text-xs">New</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -384,6 +324,30 @@ const AdminProducts = () => {
                               </>
                             )}
                           </Button>
+                          
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setSelectedProductForImages(product)}
+                              >
+                                <Image className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl">
+                              <DialogHeader>
+                                <DialogTitle>Manage Product Images</DialogTitle>
+                              </DialogHeader>
+                              {selectedProductForImages && (
+                                <ProductImageManager
+                                  productId={selectedProductForImages.id}
+                                  productName={selectedProductForImages.name}
+                                />
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                          
                           <Button 
                             size="sm" 
                             variant="outline" 
