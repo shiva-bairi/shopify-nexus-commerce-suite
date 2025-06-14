@@ -17,6 +17,7 @@ interface InteractionData {
   subject?: string;
   outcome?: string;
   followUp?: boolean;
+  [key: string]: any;
 }
 
 interface CustomerInteraction {
@@ -49,15 +50,20 @@ const CustomerInteractions = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch interactions
+  // Fetch interactions with customer names
   const { data: interactions, isLoading } = useQuery({
     queryKey: ['customer-interactions', searchTerm, filterType],
     queryFn: async () => {
       let query = supabase
         .from('customer_interactions')
         .select(`
-          *,
-          profiles!customer_interactions_user_id_fkey(first_name, last_name)
+          id,
+          user_id,
+          interaction_type,
+          interaction_data,
+          notes,
+          created_by,
+          created_at
         `)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -66,9 +72,27 @@ const CustomerInteractions = () => {
         query = query.eq('interaction_type', filterType);
       }
 
-      const { data, error } = await query;
+      const { data: interactionsData, error } = await query;
       if (error) throw error;
-      return data as CustomerInteraction[];
+
+      // Get user profiles separately
+      if (interactionsData && interactionsData.length > 0) {
+        const userIds = [...new Set(interactionsData.map(i => i.user_id))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+
+        // Combine interactions with profile data
+        const interactionsWithProfiles = interactionsData.map(interaction => ({
+          ...interaction,
+          profiles: profiles?.find(p => p.id === interaction.user_id) || null
+        }));
+
+        return interactionsWithProfiles as CustomerInteraction[];
+      }
+
+      return interactionsData as CustomerInteraction[];
     }
   });
 
@@ -78,7 +102,10 @@ const CustomerInteractions = () => {
       const { data, error } = await supabase
         .from('customer_interactions')
         .insert([{
-          ...interactionData,
+          user_id: interactionData.user_id,
+          interaction_type: interactionData.interaction_type,
+          notes: interactionData.notes,
+          interaction_data: interactionData.interaction_data as any,
           created_by: user?.id
         }])
         .select()

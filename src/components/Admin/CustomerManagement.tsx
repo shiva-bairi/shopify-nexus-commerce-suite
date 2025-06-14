@@ -83,22 +83,44 @@ const CustomerManagement = () => {
 
       const customersWithData = await Promise.all(
         profiles.slice(0, 20).map(async (profile) => {
-          const { data: metrics } = await supabase.rpc('get_customer_metrics', {
-            customer_id: profile.id
-          });
-          return {
-            ...profile,
-            metrics: metrics as CustomerMetrics || {
-              total_orders: 0,
-              total_spent: 0,
-              avg_order_value: 0,
-              last_order_date: null,
-              support_tickets: 0,
-              open_tickets: 0,
-              loyalty_points: 0,
-              loyalty_tier: 'bronze'
+          try {
+            const { data: metrics, error: metricsError } = await supabase.rpc('get_customer_metrics', {
+              customer_id: profile.id
+            });
+            
+            if (metricsError) {
+              console.error('Error fetching metrics for customer', profile.id, metricsError);
             }
-          };
+
+            return {
+              ...profile,
+              metrics: (metrics as unknown as CustomerMetrics) || {
+                total_orders: 0,
+                total_spent: 0,
+                avg_order_value: 0,
+                last_order_date: null,
+                support_tickets: 0,
+                open_tickets: 0,
+                loyalty_points: 0,
+                loyalty_tier: 'bronze'
+              }
+            };
+          } catch (error) {
+            console.error('Error processing customer metrics:', error);
+            return {
+              ...profile,
+              metrics: {
+                total_orders: 0,
+                total_spent: 0,
+                avg_order_value: 0,
+                last_order_date: null,
+                support_tickets: 0,
+                open_tickets: 0,
+                loyalty_points: 0,
+                loyalty_tier: 'bronze'
+              }
+            };
+          }
         })
       );
 

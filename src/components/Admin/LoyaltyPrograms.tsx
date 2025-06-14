@@ -16,6 +16,7 @@ interface TierThresholds {
   silver: number;
   gold: number;
   platinum: number;
+  [key: string]: any;
 }
 
 interface TierBenefits {
@@ -23,6 +24,7 @@ interface TierBenefits {
   silver: string;
   gold: string;
   platinum: string;
+  [key: string]: any;
 }
 
 interface LoyaltyProgram {
@@ -62,7 +64,12 @@ const LoyaltyPrograms = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as LoyaltyProgram[];
+      
+      return data.map(program => ({
+        ...program,
+        tier_thresholds: program.tier_thresholds as TierThresholds,
+        tier_benefits: program.tier_benefits as TierBenefits
+      })) as LoyaltyProgram[];
     }
   });
 
@@ -72,7 +79,14 @@ const LoyaltyPrograms = () => {
       if (selectedProgram) {
         const { data, error } = await supabase
           .from('loyalty_programs')
-          .update(programData)
+          .update({
+            name: programData.name,
+            description: programData.description,
+            points_per_dollar: programData.points_per_dollar,
+            tier_thresholds: programData.tier_thresholds as any,
+            tier_benefits: programData.tier_benefits as any,
+            is_active: programData.is_active
+          })
           .eq('id', selectedProgram.id)
           .select()
           .single();
@@ -81,7 +95,14 @@ const LoyaltyPrograms = () => {
       } else {
         const { data, error } = await supabase
           .from('loyalty_programs')
-          .insert([programData])
+          .insert([{
+            name: programData.name,
+            description: programData.description,
+            points_per_dollar: programData.points_per_dollar,
+            tier_thresholds: programData.tier_thresholds as any,
+            tier_benefits: programData.tier_benefits as any,
+            is_active: programData.is_active
+          }])
           .select()
           .single();
         if (error) throw error;

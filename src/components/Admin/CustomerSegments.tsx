@@ -23,6 +23,7 @@ interface SegmentCriteria {
   };
   loyaltyTier: string | null;
   lastOrderDays: number | null;
+  [key: string]: any;
 }
 
 interface CustomerSegment {
@@ -59,7 +60,11 @@ const CustomerSegments = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as CustomerSegment[];
+      
+      return data.map(segment => ({
+        ...segment,
+        criteria: segment.criteria as SegmentCriteria
+      })) as CustomerSegment[];
     }
   });
 
@@ -69,7 +74,12 @@ const CustomerSegments = () => {
       if (selectedSegment) {
         const { data, error } = await supabase
           .from('customer_segments')
-          .update(segmentData)
+          .update({
+            name: segmentData.name,
+            description: segmentData.description,
+            criteria: segmentData.criteria as any,
+            is_active: segmentData.is_active
+          })
           .eq('id', selectedSegment.id)
           .select()
           .single();
@@ -78,7 +88,12 @@ const CustomerSegments = () => {
       } else {
         const { data, error } = await supabase
           .from('customer_segments')
-          .insert([segmentData])
+          .insert([{
+            name: segmentData.name,
+            description: segmentData.description,
+            criteria: segmentData.criteria as any,
+            is_active: segmentData.is_active
+          }])
           .select()
           .single();
         if (error) throw error;
