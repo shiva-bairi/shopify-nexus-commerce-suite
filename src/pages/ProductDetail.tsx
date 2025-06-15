@@ -31,10 +31,10 @@ const ProductDetail = () => {
           product_images(image_url, is_primary),
           reviews(
             id,
+            user_id,
             rating,
             comment,
-            created_at,
-            profiles(first_name, last_name)
+            created_at
           )
         `)
         .eq('id', id)
@@ -327,7 +327,8 @@ const ProductDetail = () => {
                             ))}
                           </div>
                           <p className="font-medium">
-                            {review.profiles?.first_name} {review.profiles?.last_name}
+                            {/* No profile info, fallback to Anonymous */}
+                            Reviewer: Anonymous
                           </p>
                         </div>
                         <span className="text-sm text-gray-500">
