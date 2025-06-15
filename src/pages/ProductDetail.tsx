@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -161,7 +160,7 @@ const ProductDetail = () => {
         <div className="space-y-4">
           <div className="aspect-square rounded-lg overflow-hidden border">
             <img
-              src={currentImage?.image_url || '/placeholder.svg'}
+              src={currentImage?.image_url || ''}
               alt={product.name}
               className="w-full h-full object-cover"
             />

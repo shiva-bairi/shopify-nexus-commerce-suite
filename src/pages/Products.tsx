@@ -145,7 +145,7 @@ const Products = () => {
 
   const getProductImage = (product: any) => {
     const primaryImage = product.product_images?.find((img: any) => img.is_primary);
-    return primaryImage?.image_url || product.product_images?.[0]?.image_url || '/placeholder.svg';
+    return primaryImage?.image_url || product.product_images?.[0]?.image_url || '';
   };
 
   if (productsLoading) {
